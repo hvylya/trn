@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -29,7 +29,7 @@ const LS = {
 };
 let person = LS.get('trn:person', null);
 let S = null;
-const blank = () => ({ v:1, settings:{duration:75, restMain:120, restIso:90, restCore:45}, blockStart:null, workouts:[], active:null, measurements:[], ach:{}, lastBackup:null });
+const blank = () => ({ v:1, settings:{duration:75, restHeavy:150, restMain:120, restIso:90, restCore:45}, blockStart:null, blockLen:8, mnotes:{}, home:{}, deloadUntil:null, deloadSnooze:null, cpSeen:{}, workouts:[], active:null, measurements:[], ach:{}, lastBackup:null });
 function load(){ S = Object.assign(blank(), person ? LS.get('trn:data:' + person, {}) : {}); S.settings = Object.assign(blank().settings, S.settings); }
 function save(){ if (person) LS.set('trn:data:' + person, S); }
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
@@ -45,7 +45,7 @@ const who = () => P.people[person];
 
 /* ---------- екрани ---------- */
 let screen = 'today', tab = 'today', selDay = null, histOpen = null, chartEx = null, mKey = 'waist';
-function go(s){ screen = s; if (['today','history','progress','measure'].includes(s)) tab = s; render(); window.scrollTo(0, 0); }
+function go(s){ screen = s; if (['today','home','history','progress','measure'].includes(s)) tab = s; render(); window.scrollTo(0, 0); }
 
 function toast(html, cls){
   toastEl.className = cls || ''; toastEl.innerHTML = html; toastEl.hidden = false;
@@ -56,7 +56,7 @@ function closeSheet(){ sheetEl.hidden = true; sheetEl.innerHTML = ''; }
 sheetEl.addEventListener('click', e => { if (e.target === sheetEl) closeSheet(); });
 
 function tabbar(){
-  const t = [['today','🏠','Сьогодні'],['history','🗓️','Історія'],['progress','📈','Прогрес'],['measure','📏','Заміри']];
+  const t = [['today','🏋️','Зал'],['home','🛋️','Дім'],['history','🗓️','Історія'],['progress','📈','Прогрес'],['measure','📏','Заміри']];
   return `<div class="tabbar"><nav>${t.map(([k,i,l]) => `<button data-go="${k}" ${tab === k ? 'aria-current="page"' : ''}><span>${i}</span>${l}</button>`).join('')}</nav></div>`;
 }
 
@@ -68,13 +68,42 @@ function nextDay(){
   return wd === 0 || wd === 1 ? 'mon' : wd === 2 || wd === 3 ? 'wed' : 'fri';
 }
 function weekCounts(){ const m = new Map(); S.workouts.forEach(w => { const k = weekStart(w.start); m.set(k, (m.get(k) || 0) + 1); }); return m; }
-function streakWeeks(){
-  const m = weekCounts(); let k = weekStart(Date.now()); let n = 0;
-  if ((m.get(k) || 0) < 3) k -= 7 * 864e5;
-  while ((m.get(k) || 0) >= 3){ n++; k = weekStart(k - 3 * 864e5); }
-  return n;
+/* серія повних тижнів (3 з 3); один неповний тиждень на календарний місяць — «заморозка», серію не рве */
+function streakInfo(){
+  const m = weekCounts(); if (!S.workouts.length) return {n: 0, frozen: 0};
+  const first = weekStart(S.workouts[0].start); let k = weekStart(Date.now()), n = 0; const frozen = new Set();
+  if ((m.get(k) || 0) < 3) k = weekStart(k - 3 * 864e5);
+  let guard = 0;
+  while (k >= first && guard++ < 600){
+    if ((m.get(k) || 0) >= 3) n++;
+    else { const d = new Date(k), mk = d.getFullYear() * 12 + d.getMonth(); if (frozen.has(mk) || n === 0) break; frozen.add(mk); }
+    k = weekStart(k - 3 * 864e5);
+  }
+  return {n, frozen: frozen.size};
 }
+const streakWeeks = () => streakInfo().n;
 function blockWeek(){ if (!S.blockStart) return 1; return Math.floor((weekStart(Date.now()) - weekStart(S.blockStart)) / (7 * 864e5)) + 1; }
+const blockLen = () => S.blockLen || 8;
+const isEvening = w => new Date(w.end).getHours() >= 16;
+const shakes = () => S.workouts.filter(isEvening).length;
+const inDeload = () => S.deloadUntil && Date.now() < S.deloadUntil;
+const COMPOUND = new Set(['V-squat','Leg press 45°','Romanian deadlift','Hip thrust','T-bar row','Lat pulldown','Chest-supported row','Chest press','Seated cable row','Cable pulldown','Dumbbell bench press']);
+/* сигнал розвантаження: 2 тижні без прогресу в більшості базових вправ, або два важкі тренування поспіль */
+function deloadSignal(){
+  if (inDeload() || (S.deloadSnooze && Date.now() < S.deloadSnooze) || S.workouts.length < 6) return null;
+  const now = Date.now(), D = 864e5; let tot = 0, stuck = 0;
+  const score = it => Math.max(...it.sets.filter(x => x.done && x.w).map(x => x.w * (1 + (x.r || 0) / 30)));
+  const ens = new Set(S.workouts.flatMap(w => w.items.filter(it => COMPOUND.has(it.en)).map(it => it.en)));
+  ens.forEach(en => { const e = entriesFor(en).filter(x => !x.w.deload);
+    const recent = e.filter(x => now - x.w.start <= 14 * D), older = e.filter(x => now - x.w.start > 14 * D && now - x.w.start <= 35 * D);
+    if (!recent.length || !older.length) return; tot++;
+    if (Math.max(...recent.map(x => score(x.it))) <= Math.max(...older.map(x => score(x.it)))) stuck++; });
+  if (tot >= 3 && stuck / tot >= 0.6) return 'stuck';
+  const last2 = S.workouts.slice(-2);
+  if (last2.length === 2 && last2.every(w => w.mood === '😫')) return 'tired';
+  if (last2.length === 2 && last2.every(w => { const f = w.items.filter(it => it.feel); return f.length >= 3 && f.filter(it => it.feel === 'hard').length / f.length >= 0.5; })) return 'tired';
+  return null;
+}
 function entriesFor(en){ const out = []; S.workouts.forEach(w => w.items.forEach(it => { if (it.en === en && it.sets.some(s => s.done)) out.push({w, it}); })); return out; }
 function lastFor(en){ const e = entriesFor(en); return e.length ? e[e.length - 1] : null; }
 function bestFor(en){
@@ -87,7 +116,9 @@ function suggestUp(step, en){
   const done = l.it.sets.filter(s => s.done);
   if (done.length < step.sets) return null;
   const w0 = done[0].w; if (w0 == null) return null;
+  if (inDeload()) return null;
   if (done.every(s => s.w === w0 && (s.r || 0) >= step.max)) return w0 + step.step;
+  if (l.it.feel === 'easy' && done.every(s => s.w === w0 && (s.r || 0) >= step.max - 1)) return w0 + step.step;
   return null;
 }
 const effStep = (day, id) => { const s = stepById(day, id); const a = S.active && S.active.items[id]; return a && a.useAlt && s.alt ? Object.assign({}, s, s.alt, {id: s.id, kind: s.kind, note: s.note, isAlt: true}) : s; };
@@ -110,7 +141,7 @@ const ACH = [
   ['w100','🏆','100 тренувань', s => s.workouts.length >= 100],
   ['week','📅','Повний тиждень: 3 з 3', s => [...weekCounts().values()].some(v => v >= 3)],
   ['month','🔥','Місяць без пропусків', s => streakWeeks() >= 4],
-  ['block','🎓','Блок 8 тижнів завершено', s => s.blockStart && blockWeek() > 8 && s.workouts.filter(w => w.start >= s.blockStart).length >= 20],
+  ['block','🎓','Блок завершено', s => s.blockStart && blockWeek() > blockLen() && s.workouts.filter(w => w.start >= s.blockStart).length >= 20],
   ['pr1','⭐','Перший рекорд', s => s.workouts.some(w => (w.prs || []).length)],
   ['pr10','🌟','10 рекордів', s => s.workouts.reduce((a, w) => a + (w.prs || []).length, 0) >= 10],
   ['up10','📈','+10 разів додала вагу', s => s.workouts.reduce((a, w) => a + (w.ups || 0), 0) >= 10],
@@ -119,9 +150,12 @@ const ACH = [
   ['extra','⏱️','Встигла «Якщо є час»', s => s.workouts.some(w => w.items.some(it => it.kind === 'extra' && it.sets.some(x => x.done)))],
   ['shake','🥤','10 вечірніх шейків', s => s.workouts.filter(w => new Date(w.end).getHours() >= 16).length >= 10],
   ['m1','📏','Перші заміри', s => s.measurements.length >= 1],
+  ['neck7','🦒','Шия 7 днів поспіль', s => homeStreak('neck') >= 7, 'p1'],
+  ['calf10','🦵','Ікри вдома 10 разів', s => homeCount('calf') >= 10],
   ['m4','📐','Заміри 4 тижні поспіль', s => { const ws = new Set(s.measurements.map(m => weekStart(new Date(m.date).getTime()))); let k = weekStart(Date.now()), n = 0; if (!ws.has(k)) k = weekStart(k - 3 * 864e5); while (ws.has(k)){ n++; k = weekStart(k - 3 * 864e5); } return n >= 4; }]
 ];
-function checkAch(){ const fresh = []; ACH.forEach(([id,,, test]) => { if (!S.ach[id]){ let ok = false; try { ok = !!test(S); } catch(e){} if (ok){ S.ach[id] = Date.now(); fresh.push(id); } } }); return fresh; }
+const achList = () => ACH.filter(a => !a[4] || a[4] === person);
+function checkAch(){ const fresh = []; achList().forEach(([id,,, test]) => { if (!S.ach[id]){ let ok = false; try { ok = !!test(S); } catch(e){} if (ok){ S.ach[id] = Date.now(); fresh.push(id); } } }); return fresh; }
 const achById = id => ACH.find(a => a[0] === id);
 
 /* ---------- вибір людини ---------- */
@@ -142,15 +176,17 @@ function todayScreen(){
   const ws = weekStart(Date.now());
   const thisWeek = new Set(S.workouts.filter(w => weekStart(w.start) === ws).map(w => w.day));
   const est = Math.round(steps.reduce((a, s) => a + s.sets * perSet(s), 0) + 6);
-  const streak = streakWeeks();
+  const si = streakInfo(), streak = si.n;
   const bw = blockWeek();
   const backupOld = S.workouts.length >= 3 && (!S.lastBackup || Date.now() - S.lastBackup > 30 * 864e5);
   const names = steps.filter(s => s.kind === 'main').map(s => s.en);
   return `<div class="top"><h1>Привіт, ${esc(who())}</h1><button class="iconbtn" data-act="settings" aria-label="Налаштування">⚙️</button></div>
     <div class="row wrap" style="margin-bottom:14px">
-      <span class="pill">${bw <= 8 ? `Тиждень ${bw} з 8` : 'Блок завершено'}</span>
-      <span class="pill">🔥 Серія: ${streak} ${streak === 1 ? 'тиждень' : streak >= 2 && streak <= 4 ? 'тижні' : 'тижнів'}</span>
+      <span class="pill">${bw <= blockLen() ? `Тиждень ${bw} з ${blockLen()}` : 'Блок завершено 🎓'}</span>
+      <span class="pill">🔥 Серія: ${streak} ${streak === 1 ? 'тиждень' : streak >= 2 && streak <= 4 ? 'тижні' : 'тижнів'}${si.frozen ? ' · ❄️' : ''}</span>
+      ${inDeload() ? '<span class="pill">🪶 Легкий тиждень</span>' : ''}
     </div>
+    ${bannersHtml(bw)}
     ${backupOld ? `<div class="banner">💾 <span class="grow">${S.lastBackup ? `Остання резервна копія ${Math.floor((Date.now() - S.lastBackup) / 864e5)} дн. тому` : 'Резервної копії ще немає'}</span><button class="btn" data-act="backup">Зберегти</button></div>` : ''}
     <div class="card">
       <div class="row" style="justify-content:space-between">
@@ -164,6 +200,17 @@ function todayScreen(){
     </div>
     <button class="big ghost" data-act="dayplan" data-dayv="${day}">План дня й техніка</button>
     ${tabbar()}`;
+}
+
+function bannersHtml(bw){
+  let h = '';
+  const key = String(S.blockStart);
+  if (S.blockStart && bw > blockLen()) h += `<div class="banner ok">🎓 <span class="grow"><b>Блок завершено!</b> Подивись підсумок і отримай сертифікат.</span><button class="btn" data-act="blockend">Підсумок</button></div>`;
+  else if (S.blockStart && bw === 3 && !S.cpSeen[key + ':3']) h += `<div class="banner">🧭 <span class="grow"><b>Контрольна точка, 3-й тиждень.</b> Якщо якась вправа не заходить — болить, незручно або тренажер вічно зайнятий — запиши в нотатку після тренування, замінимо.</span><button class="btn" data-act="cpok" data-k="${key}:3">Ок</button></div>`;
+  const ds = deloadSignal();
+  if (ds) h += `<div class="banner">🪫 <span class="grow"><b>${ds === 'stuck' ? 'Прогрес стоїть 2 тижні.' : 'Два важкі тренування поспіль.'}</b> Схоже, час на легкий тиждень: ті самі вправи, вага −25%.</span></div>
+    <div class="row" style="margin:-4px 0 12px"><button class="btn acc grow" data-act="deload">Почати легкий тиждень</button><button class="btn" data-act="deloadlater">Пізніше</button></div>`;
+  return h;
 }
 
 /* ---------- старт тренування ---------- */
@@ -191,6 +238,7 @@ function fillSets(id){
     const ls = last ? (last.it.sets[i] || last.it.sets[last.it.sets.length - 1]) : null;
     let w = ls ? ls.w : null, r = ls ? ls.r : (st.min || null);
     if (up != null) w = up;
+    if (inDeload() && w != null && st.type === 'weight') w = Math.max(0, Math.round(w * 0.75 / st.step) * st.step);
     if (st.type === 'warm') return {done: false};
     if (st.type === 'body') w = null;
     return {w, r, done: false};
@@ -246,19 +294,22 @@ function workoutScreen(){
       <div class="clock" id="clock"></div></div>
     <div class="progress"><i style="width:${pct}%"></i></div>
     <div class="card">
-      <div class="kindtag ${st.kind === 'extra' ? 'extra' : ''}">${kindLbl}${st.isAlt ? ' · заміна' : ''}</div>
+      <div class="kindtag ${st.kind === 'extra' ? 'extra' : ''}">${kindLbl}${st.isAlt ? ' · заміна' : ''}${inDeload() && st.type === 'weight' ? ' · легкий тиждень −25%' : ''}</div>
       <h1 class="exname">${esc(st.en)}</h1>
       <p class="exua">${esc(st.ua || L.ua || '')}</p>
       ${L.mach ? `<p class="mach">${esc(L.mach)}</p>` : ''}
+      ${S.mnotes[st.en] ? `<button class="mnote" data-act="mnote">⚙️ ${esc(S.mnotes[st.en])}</button>` : ''}
       ${st.note ? `<p class="note">${esc(st.note)}</p>` : ''}
       <p class="dose">План: <b>${esc(st.dose)}</b></p>
       ${st.type === 'weight' || last ? `<div class="last">${lastTxt}</div>` : ''}
       ${up != null ? `<div class="up">⬆ Час додати вагу: спробуй ${fmt(up)} кг</div>` : ''}
       ${rows}
+      ${feelHtml(st, it)}
       <div class="tools">
         ${L.tech ? `<button class="btn" data-act="tech" aria-expanded="${techOpen}">Техніка ${techOpen ? '▴' : '▾'}</button>` : ''}
         ${L.video ? `<a class="btn" style="display:grid;place-items:center;text-decoration:none" href="${esc(L.video)}" target="_blank" rel="noopener">▶ Відео</a>` : ''}
         ${st.kind !== 'warm' ? `<button class="btn" data-act="busy">Зайнято?</button>` : ''}
+        ${st.kind !== 'warm' && L.mach && L.mach !== 'Каремат' ? `<button class="btn" data-act="mnote">⚙️ ${S.mnotes[st.en] ? 'Змінити' : 'Налаштування'}</button>` : ''}
       </div>
       ${techOpen ? techHtml(st.en) : ''}
     </div>
@@ -267,6 +318,11 @@ function workoutScreen(){
     <div class="wnav"><div>
       ${navButtons(st, isLast, nextIsExtra)}
     </div></div>`;
+}
+function feelHtml(st, it){
+  if (st.type !== 'weight' || st.kind === 'warm' || !it.sets.length || !it.sets.every(s => s.done)) return '';
+  const o = [['easy','😌 Легко'],['ok','🙂 Норм'],['hard','😤 Важко']];
+  return `<div class="feel"><span>Як було?</span>${o.map(([k, l]) => `<button data-feel="${k}" aria-pressed="${it.feel === k}">${l}</button>`).join('')}</div>`;
 }
 function navButtons(st, isLast, nextIsExtra){
   const A = S.active;
@@ -316,7 +372,26 @@ function tick(){
 }
 setInterval(tick, 1000);
 
-function restFor(st){ return st.kind === 'core' || st.type === 'body' ? S.settings.restCore : (st.min && st.min <= 8 ? S.settings.restMain : S.settings.restIso); }
+function restFor(st){
+  if (st.kind === 'core' || st.type === 'body') return S.settings.restCore;
+  if (COMPOUND.has(st.en)) return st.min && st.min <= 8 ? S.settings.restHeavy : S.settings.restMain;
+  return S.settings.restIso;
+}
+const FUN = {
+  up: ['Сильніше, ніж минулого разу 💪','Прогрес видно неозброєним оком 👀','Минула ти була б вражена 😎','Мʼязи записали це в щоденник 📈','Оце так! Плюс до минулого разу 🚀'],
+  same: ['Стабільно, як швейцарський годинник ⌚','Стабільність — теж сила 🧱','Тримаєш планку. Буквально 😄','Рівно як минулого разу — база тримається 🧘'],
+  down: ['Сьогодні гравітація сильніша, ніж зазвичай 🌍','Не день рекордів — день характеру 😌','Навіть Місяць має фази 🌙 Наступного разу надолужиш','Легший день — теж тренування. Шейк не скасовується 🥤','Мʼязи сьогодні в режимі енергозбереження 🔋 Буває!'],
+  first: ['Перший раз — є точка відліку ✍️','Записано! Тепер буде з чим порівнювати 📒'],
+  deload: ['Легкий тиждень — так і задумано 🪶','Відновлення — це теж частина прогресу 🌿']
+};
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function funPhrase(st, it){
+  if (inDeload() && st.type === 'weight') return pick(FUN.deload);
+  const l = lastFor(st.en); if (!l) return pick(FUN.first);
+  const sc = sets => sets.filter(x => x.done).reduce((a, x) => a + (st.type === 'weight' ? (x.w || 0) * (x.r || 0) : (x.r || 0)), 0);
+  const now = sc(it.sets), was = sc(l.it.sets);
+  return now > was * 1.005 ? pick(FUN.up) : now < was * 0.995 ? pick(FUN.down) : pick(FUN.same);
+}
 function markDone(i){
   const A = S.active, id = A.queue[A.idx], st = effStep(A.day, id), it = A.items[id], s = it.sets[i];
   if (s.done){ s.done = false; save(); render(); return; }
@@ -337,7 +412,7 @@ function markDone(i){
   const allDone = it.sets.every(x => x.done);
   if (!allDone){ A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; }
   else if (st.kind === 'warm'){ A.restEnd = null; }
-  else { A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; toast('Вправу завершено ✓ — тисни «Далі»'); }
+  else { A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; if (!A.prs.some(p => p.en === st.en)) toast(funPhrase(st, it), 'fun'); }
   save(); render();
 }
 
@@ -371,10 +446,10 @@ const PHRASES_DAY = ['Готово! Так тримати 💪','Ще одна �
 let lastFinished = null;
 function finishWorkout(){
   const A = S.active; if (!A) return;
-  const items = A.queue.map(id => { const st = effStep(A.day, id), x = A.items[id]; return x ? {en: st.en, kind: st.kind, type: st.type, unit: st.unit, side: !!st.side, alt: !!st.isAlt, sets: x.sets.filter(s => s.done).map(s => ({w: s.w ?? null, r: s.r ?? null, done: true}))} : null; }).filter(x => x && x.sets.length);
+  const items = A.queue.map(id => { const st = effStep(A.day, id), x = A.items[id]; return x ? {en: st.en, kind: st.kind, type: st.type, unit: st.unit, side: !!st.side, alt: !!st.isAlt, feel: x.feel || null, sets: x.sets.filter(s => s.done).map(s => ({w: s.w ?? null, r: s.r ?? null, done: true}))} : null; }).filter(x => x && x.sets.length);
   let ups = 0;
   items.forEach(it => { if (it.type !== 'weight') return; const l = lastFor(it.en); if (l && l.it.sets[0] && it.sets[0] && it.sets[0].w > l.it.sets[0].w) ups++; });
-  const rec = { id: 'w' + A.start, day: A.day, start: A.start, end: Date.now(), items, prs: A.prs, ups, tonnage: tonnageOf(items), sets: items.filter(it => it.kind !== 'warm').reduce((a, it) => a + it.sets.length, 0), mood: null, note: '' };
+  const rec = { id: 'w' + A.start, day: A.day, start: A.start, end: Date.now(), items, prs: A.prs, ups, tonnage: tonnageOf(items), sets: items.filter(it => it.kind !== 'warm').reduce((a, it) => a + it.sets.length, 0), mood: null, note: '', deload: !!inDeload() };
   if (!S.blockStart) S.blockStart = A.start;
   S.workouts.push(rec); S.active = null;
   const fresh = checkAch();
@@ -392,9 +467,10 @@ function finishScreen(){
     <div class="stats">
       <div class="stat"><b>${dur} хв</b><span>тривалість</span></div>
       <div class="stat"><b>${w.sets}</b><span>підходів</span></div>
-      <div class="stat"><b>${fmtInt(w.tonnage)} кг</b><span>піднято загалом</span></div>
+      <div class="stat"><b>${w.items.filter(it => it.kind !== 'warm').length}</b><span>вправ</span></div>
       <div class="stat"><b>${w.prs.length}</b><span>${w.prs.length === 1 ? 'рекорд' : 'рекордів'}</span></div>
     </div>
+    <p class="muted small" style="text-align:center;margin:-6px 0 12px">Піднято загалом: ${fmtInt(w.tonnage)} кг${f.evening ? ` · 🥤 шейк №${shakes()}` : ''}</p>
     ${w.prs.map(p => `<div class="newach"><span>🏆</span><div><b>${esc(p.en)}</b><br><small class="muted">${fmt(p.w)} кг × ${fmt(p.r)}</small></div></div>`).join('')}
     ${f.fresh.map(id => { const a = achById(id); return `<div class="newach"><span>${a[1]}</span><div><b>Нова ачівка!</b><br>${esc(a[2])}</div></div>`; }).join('')}
     <div class="card"><h3>Як пройшло?</h3>
@@ -476,14 +552,92 @@ function progressScreen(){
   if (!chartEx || !exs.includes(chartEx)) chartEx = exs[0] || null;
   const pts = chartEx ? entriesFor(chartEx).map(({w, it}) => ({x: w.start, y: Math.max(...it.sets.filter(s => s.done && s.w != null).map(s => s.w))})).filter(p => isFinite(p.y)) : [];
   const bw = blockWeek(), tot = S.workouts.reduce((a, w) => a + (w.tonnage || 0), 0);
-  const unlocked = ACH.filter(a => S.ach[a[0]]).length;
+  const unlocked = achList().filter(a => S.ach[a[0]]).length;
   return `<div class="top"><h1>Прогрес</h1></div>
-    <div class="kpis"><div class="stat"><b>${S.workouts.length}</b><span>тренувань</span></div><div class="stat"><b>🔥 ${streakWeeks()}</b><span>тижнів поспіль</span></div><div class="stat"><b>${fmt(Math.round(tot / 100) / 10)} т</b><span>піднято</span></div></div>
-    <div class="card" style="margin-top:12px"><h3>Блок: ${bw <= 8 ? `тиждень ${bw} з 8` : 'завершено 🎓'}</h3><div class="bar"><i style="width:${Math.min(100, Math.round(Math.min(bw, 8) / 8 * 100))}%"></i></div>
+    <div class="kpis"><div class="stat"><b>${S.workouts.length}</b><span>тренувань</span></div><div class="stat"><b>🔥 ${streakWeeks()}</b><span>тижнів поспіль</span></div><div class="stat"><b>🥤 ${shakes()}</b><span>шейків заслужено</span></div></div>
+    <div class="card" style="margin-top:12px"><h3>Мʼязи цього тижня</h3>${weekMap()}</div>
+    <div class="card"><h3>Блок: ${bw <= blockLen() ? `тиждень ${bw} з ${blockLen()}` : 'завершено 🎓'}</h3><div class="bar"><i style="width:${Math.min(100, Math.round(Math.min(bw, blockLen()) / blockLen() * 100))}%"></i></div>
       ${calMonth(now.getFullYear(), now.getMonth(), days)}${calMonth(pm.getFullYear(), pm.getMonth(), days)}</div>
-    <div class="card"><h3>Ачівки · ${unlocked} з ${ACH.length}</h3><div class="achs">${ACH.map(([id, e, t]) => `<div class="ach ${S.ach[id] ? '' : 'lock'}"><span>${S.ach[id] ? e : '🔒'}</span>${esc(t)}</div>`).join('')}</div></div>
+    <div class="card"><h3>Ачівки · ${unlocked} з ${achList().length}</h3><div class="achs">${achList().map(([id, e, t]) => `<div class="ach ${S.ach[id] ? '' : 'lock'}"><span>${S.ach[id] ? e : '🔒'}</span>${esc(t)}</div>`).join('')}</div></div>
     <div class="card"><h3>Вага по вправі</h3>${exs.length ? `<select data-act="chartex" aria-label="Вправа">${exs.map(e => `<option ${e === chartEx ? 'selected' : ''}>${esc(e)}</option>`).join('')}</select>${lineChart(pts, 'найбільша вага за тренування, кг')}` : '<p class="muted small">Графік зʼявиться після першого тренування.</p>'}</div>
     ${tabbar()}`;
+}
+
+function weekMap(){
+  const ws = weekStart(Date.now()), m = {};
+  S.workouts.filter(w => weekStart(w.start) === ws).forEach(w => w.items.forEach(it => { if (it.kind === 'warm') return; const L = lib(it.en).muscles; if (!L) return; const n = it.sets.length; L.p.forEach(k => m[k] = (m[k] || 0) + n); L.s.forEach(k => m[k] = (m[k] || 0) + n * .5); }));
+  const lv = v => !v ? 0 : v < 3 ? 1 : v < 6 ? 2 : v < 10 ? 3 : 4;
+  const any = Object.keys(m).length;
+  return `<div class="tfig" style="max-width:260px">${bodySvg(k => 'h' + lv(m[k]), k => `${P.muscles[k] || k}: ${fmt(Math.round((m[k] || 0) * 2) / 2)}`, "Мʼязи цього тижня")}</div>
+    <div class="legend"><span><i class="h1"></i>до 3</span><span><i class="h2"></i>3–6</span><span><i class="h3"></i>6–10</span><span><i class="h4"></i>10+</span><span>підходів</span></div>
+    ${any ? '' : '<p class="muted small" style="text-align:center">Карта «розгорається» з кожним тренуванням тижня.</p>'}`;
+}
+
+/* ---------- дім ---------- */
+const HOME = {
+  p1: [{id:'neck', icon:'🦒', title:'Шия', desc:'«Кивок» лежачи 10 × 10 с і тиск головою в долоню без руху', per:7, freq:'щодня'},
+       {id:'calf', icon:'🦵', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'}],
+  p2: [{id:'calf', icon:'🦵', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'}]
+};
+const homeDone = (d, id) => (S.home[d] || []).includes(id);
+function homeCount(id){ return Object.values(S.home).filter(a => a.includes(id)).length; }
+function homeStreak(id){ let d = new Date(), n = 0; if (!homeDone(iso(d), id)) d.setDate(d.getDate() - 1); while (homeDone(iso(d), id)){ n++; d.setDate(d.getDate() - 1); } return n; }
+function homeScreen(){
+  const today = iso(new Date()), ws = weekStart(Date.now());
+  const days = Array.from({length: 7}, (_, i) => { const d = new Date(ws + i * 864e5); return {k: iso(d), l: ['Пн','Вт','Ср','Чт','Пт','Сб','Нд'][i], t: iso(d) === today}; });
+  return `<div class="top"><h1>Вдома</h1></div>
+    <p class="muted" style="margin:-6px 0 14px">Короткі вправи поза залом. Познач, коли зробила.</p>
+    ${HOME[person].map(h => { const done = homeDone(today, h.id); const wk = days.filter(d => homeDone(d.k, h.id)).length;
+      return `<div class="card"><div class="row"><span style="font-size:30px">${h.icon}</span><div class="grow"><h2>${h.title}</h2><p class="muted small">${h.freq} · цього тижня ${wk} з ${h.per}</p></div></div>
+        <p style="margin:10px 0 12px">${esc(h.desc)}</p>
+        <button class="warmcheck ${done ? 'done' : ''}" data-home="${h.id}"><i>${done ? '✓' : ''}</i>${done ? 'Сьогодні зроблено' : 'Зробила сьогодні'}</button>
+        <div class="hweek">${days.map(d => `<span class="${homeDone(d.k, h.id) ? 'h' : ''} ${d.t ? 't' : ''}">${d.l}</span>`).join('')}</div>
+        ${h.per === 7 ? `<p class="muted small" style="margin-top:8px">Днів поспіль: ${homeStreak(h.id)}</p>` : ''}</div>`; }).join('')}
+    ${tabbar()}`;
+}
+
+/* ---------- підсумок блоку й сертифікат ---------- */
+function blockStats(){
+  const ws = S.workouts.filter(w => w.start >= S.blockStart);
+  const prog = [];
+  new Set(ws.flatMap(w => w.items.filter(it => it.type === 'weight' && it.unit === 'reps' && it.kind !== 'warm').map(it => it.en))).forEach(en => {
+    const e = ws.map(w => w.items.find(it => it.en === en)).filter(Boolean).map(it => Math.max(...it.sets.map(x => x.w || 0)));
+    if (e.length >= 2 && e[0] > 0 && e[e.length - 1] > e[0]) prog.push({en, from: e[0], to: e[e.length - 1], pct: (e[e.length - 1] / e[0] - 1) * 100});
+  });
+  prog.sort((a, b) => b.pct - a.pct);
+  return { n: ws.length, sets: ws.reduce((a, w) => a + w.sets, 0), prs: ws.reduce((a, w) => a + (w.prs || []).length, 0), shakes: ws.filter(isEvening).length, prog: prog.slice(0, 3), from: S.blockStart, to: Date.now() };
+}
+function blockEndSheet(){
+  const b = blockStats();
+  openSheet(`<h2>🎓 Блок завершено!</h2><p>${dShort(b.from)} — ${dShort(b.to)} · ${b.n} тренувань · ${b.sets} підходів · ${b.prs} рекордів · 🥤 ${b.shakes}</p>
+    ${b.prog.length ? `<div class="qsec">Найбільший прогрес</div>${b.prog.map(x => `<div class="mrow"><span>${esc(x.en)}</span><span>${fmt(x.from)} → <b>${fmt(x.to)}</b> кг <span class="dn">+${Math.round(x.pct)}%</span></span></div>`).join('')}` : ''}
+    <div class="opts" style="margin-top:14px">
+      <button data-act="cert">🖼 Сертифікат<small>Картинка з підсумком — зберегти у «Фото» або поділитися</small></button>
+      ${blockLen() < 12 ? `<button data-act="extend">➕ Продовжити блок ще на 2 тижні<small>Якщо ваги ще ростуть — нічого не міняємо</small></button>` : ''}
+      <button data-act="newblock">🔁 Почати новий блок<small>Тижні рахуються з сьогодні</small></button>
+    </div>`);
+}
+async function certificate(){
+  const b = blockStats(), cs = getComputedStyle(document.documentElement);
+  const acc = cs.getPropertyValue('--accent').trim() || '#ff7a59', bg = cs.getPropertyValue('--bg').trim() || '#0f1115', ink = cs.getPropertyValue('--ink').trim() || '#fff', mut = cs.getPropertyValue('--muted').trim() || '#999';
+  const c = document.createElement('canvas'); c.width = 1080; c.height = 1350; const x = c.getContext('2d');
+  x.fillStyle = bg; x.fillRect(0, 0, 1080, 1350);
+  const g = x.createLinearGradient(0, 0, 1080, 0); g.addColorStop(0, acc); g.addColorStop(1, '#ffcf5a'); x.fillStyle = g; x.fillRect(0, 0, 1080, 18); x.fillRect(0, 1332, 1080, 18);
+  x.textAlign = 'center'; const F = (w, s) => `${w} ${s}px -apple-system, "SF Pro Display", "Segoe UI", Roboto, sans-serif`;
+  x.font = F(400, 120); x.fillText('🎓', 540, 210);
+  x.fillStyle = acc; x.font = F(800, 46); x.fillText('СЕРТИФІКАТ', 540, 300);
+  x.fillStyle = ink; x.font = F(800, 92); x.fillText(who(), 540, 420);
+  x.fillStyle = mut; x.font = F(500, 40); x.fillText(`завершила ${blockLen()}-тижневий блок`, 540, 490); x.fillText(`${dShort(b.from)} — ${dShort(b.to)}`, 540, 545);
+  const st = [[b.n, 'тренувань'], [b.sets, 'підходів'], [b.prs, 'рекордів'], [b.shakes, 'шейків 🥤']];
+  st.forEach(([v, l], i) => { const cx = 150 + i * 260; x.fillStyle = ink; x.font = F(800, 72); x.fillText(String(v), cx, 690); x.fillStyle = mut; x.font = F(500, 30); x.fillText(l, cx, 735); });
+  if (b.prog.length){ x.fillStyle = acc; x.font = F(800, 36); x.fillText('НАЙБІЛЬШИЙ ПРОГРЕС', 540, 850);
+    b.prog.forEach((p, i) => { x.fillStyle = ink; x.font = F(600, 40); x.fillText(`${p.en}: ${fmt(p.from)} → ${fmt(p.to)} кг (+${Math.round(p.pct)}%)`, 540, 920 + i * 62); }); }
+  x.fillStyle = mut; x.font = F(600, 34); x.fillText('Зал на двох 🏋️', 540, 1270);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png')); const name = `sertyfikat-${who()}-${iso(new Date())}.png`;
+  try { const file = new File([blob], name, {type: 'image/png'});
+    if (navigator.canShare && navigator.canShare({files: [file]})) await navigator.share({files: [file], title: 'Сертифікат'});
+    else { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+  } catch(e){}
 }
 
 /* ---------- заміри ---------- */
@@ -522,13 +676,13 @@ function settingsSheet(){
     <div class="themes">${THEMES.map(([k, l, bg, ac]) => `<button data-theme="${k}" aria-pressed="${LS.get('trn:theme','dark') === k}" style="background:${bg};color:${ac}"><i><b style="background:${ac}"></b><b style="background:${bg};outline:1px solid ${ac}"></b></i>${l}</button>`).join('')}</div>
     <p style="margin-top:14px">Відпочинок між підходами</p>
     <div class="opts">
-      ${[['restMain','Важкі базові (5–8 повторів)'],['restIso','Інші вправи'],['restCore','Кор']].map(([k, l]) => `<div style="padding:4px 0"><div class="small muted" style="margin-bottom:4px">${l}</div><span class="seg">${[45, 60, 90, 120, 150].map(v => `<button data-rest="${k}:${v}" aria-pressed="${s[k] === v}">${v >= 60 ? (v / 60).toString().replace('.', ',') + ' хв' : v + ' с'}</button>`).join('')}</span></div>`).join('')}
+      ${[['restHeavy','Важкі базові (5–8 повторів)',[120,150,180]],['restMain','Інші базові (8–12)',[90,120,150]],['restIso','Ізоляція',[60,90,120]],['restCore','Кор',[30,45,60]]].map(([k, l, vals]) => `<div style="padding:4px 0"><div class="small muted" style="margin-bottom:4px">${l}</div><span class="seg">${vals.map(v => `<button data-rest="${k}:${v}" aria-pressed="${s[k] === v}">${v >= 60 ? (v / 60).toString().replace('.', ',') + ' хв' : v + ' с'}</button>`).join('')}</span></div>`).join('')}
     </div>
     <p style="margin-top:14px">Дані</p>
     <div class="opts">
       <button data-act="backup">💾 Зберегти резервну копію<small>${S.lastBackup ? 'Остання: ' + dShort(S.lastBackup) : 'Ще не було'}</small></button>
       <button data-act="restore">📂 Відновити з копії<small>Замінить поточні дані</small></button>
-      <button data-act="newblock">🔁 Почати новий 8-тижневий блок<small>Лічильник тижнів почнеться з сьогодні</small></button>
+      <button data-act="newblock">🔁 Почати новий блок<small>Лічильник тижнів почнеться з сьогодні</small></button>
       <button data-act="switchp">👤 Змінити людину<small>Зараз: ${esc(who())}. Дані кожної зберігаються окремо</small></button>
     </div>
     <p class="muted small" style="margin-top:14px">Версія ${APP_VERSION} · програма від ${esc(P.version)}</p>
@@ -562,7 +716,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 /* ---------- рендер ---------- */
 function render(){
   if (!person){ app.innerHTML = chooseScreen(); return; }
-  const map = {today: todayScreen, workout: workoutScreen, finish: finishScreen, history: historyScreen, progress: progressScreen, measure: measureScreen};
+  const map = {home: homeScreen, today: todayScreen, workout: workoutScreen, finish: finishScreen, history: historyScreen, progress: progressScreen, measure: measureScreen};
   app.innerHTML = (map[screen] || todayScreen)();
   app.classList.toggle('inworkout', screen === 'workout');
   tick();
@@ -577,6 +731,8 @@ document.addEventListener('click', e => {
   if (d.day && !d.act){ selDay = d.day; render(); return; }
   if (d.hist){ histSheet(d.hist); return; }
   if (d.mood){ const w = S.workouts.find(x => x.id === lastFinished.id); if (w){ w.mood = d.mood; save(); app.querySelectorAll('[data-mood]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mood === d.mood)); } return; }
+  if (d.feel && S.active){ const it = S.active.items[S.active.queue[S.active.idx]]; it.feel = it.feel === d.feel ? null : d.feel; save(); render(); return; }
+  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) toast(`${achById(fresh[0])[1]} Нова ачівка: ${esc(achById(fresh[0])[2])}`); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
   if (d.theme){ LS.set('trn:theme', d.theme); applyTheme(); settingsSheet(); return; }
   if (d.dur){ S.settings.duration = +d.dur; save(); settingsSheet(); render(); return; }
   if (d.rest){ const [k, v] = d.rest.split(':'); S.settings[k] = +v; save(); settingsSheet(); return; }
@@ -628,7 +784,18 @@ document.addEventListener('click', e => {
     case 'backup': backup(); break;
     case 'restore': { const f = document.getElementById('restorefile'); f.onchange = () => f.files[0] && restoreFrom(f.files[0]); f.click(); break; }
     case 'dorestore': { const j = restoreFrom.pending; if (j){ person = j.person in P.people ? j.person : person; LS.set('trn:person', person); S = Object.assign(blank(), j.data); save(); toast('Дані відновлено ✓'); } closeSheet(); go('today'); break; }
-    case 'newblock': S.blockStart = Date.now(); save(); closeSheet(); render(); toast('Новий блок: тиждень 1 з 8'); break;
+    case 'newblock': S.blockStart = Date.now(); S.blockLen = 8; save(); closeSheet(); render(); toast('Новий блок: тиждень 1 з 8'); break;
+    case 'extend': S.blockLen = Math.min(12, blockLen() + 2); save(); closeSheet(); render(); toast(`Блок продовжено: ${blockLen()} тижнів`); break;
+    case 'blockend': blockEndSheet(); break;
+    case 'cert': certificate(); break;
+    case 'cpok': S.cpSeen[d.k] = 1; save(); render(); break;
+    case 'deload': S.deloadUntil = Date.now() + 7 * 864e5; save(); render(); toast('🪶 Легкий тиждень: вага −25% на 7 днів'); break;
+    case 'deloadlater': S.deloadSnooze = Date.now() + 7 * 864e5; save(); render(); break;
+    case 'mnote': { const id = S.active.queue[S.active.idx], st = effStep(S.active.day, id);
+      openSheet(`<h2>Налаштування тренажера</h2><p>${esc(st.en)} — що виставляти, щоб не підбирати щоразу.</p>
+        <textarea id="mnotetxt" placeholder="Напр.: сидіння 4, спинка 2, стопи вгорі платформи">${esc(S.mnotes[st.en] || '')}</textarea>
+        <div class="opts" style="margin-top:12px"><button class="btn acc" style="text-align:center" data-act="savemnote" data-en="${esc(st.en)}">Зберегти</button></div>`); break; }
+    case 'savemnote': { const v = document.getElementById('mnotetxt').value.trim(); if (v) S.mnotes[d.en] = v; else delete S.mnotes[d.en]; save(); closeSheet(); render(); break; }
     case 'switchp': if (S.active){ toast('Спершу заверши тренування'); break; } person = null; LS.set('trn:person', null); closeSheet(); render(); break;
   }
 });
