@@ -26,7 +26,7 @@
 if ('serviceWorker' in navigator) {
   const hadController = !!navigator.serviceWorker.controller;
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').then(reg => { try { reg.update(); } catch(e){} }).catch(() => {});
+    navigator.serviceWorker.register("sw.js").then(reg => reg.update().catch(() => {})).catch(() => {});
   });
   // нова версія активувалась — перезавантажуємо, дані тренувань не зачіпаються
   let reloading = false;

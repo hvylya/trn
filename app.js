@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.5.1';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -289,10 +289,21 @@ function fillSets(id){
 }
 
 /* ---------- екран вправи ---------- */
+/* фото тренажерів (офлайн, з кешу застосунку) */
+const PHOTO = {'V-squat':'vsquat-drax','Leg press 45°':'legpress-hack','Calf press 45°':'legpress-hack','Hip thrust':'hipthrust-drax','Romanian deadlift':'rack-platform',
+  'Seated leg curl':'legcurl-s72','Hip adduction':'adductor','Hip abduction':'adductor','Leg extension':'legext-s71','Calf press':'legpress-s70',
+  'T-bar row':'tbar-drax','Face pull':'ms50','Cable lateral raise':'ms50','Pallof press':'ms50','Cable pulldown':'ms50','Seated cable row':'ms50','Cable fly':'ms50','Cable pushdown':'ms50',
+  'Multi Fly lateral raise':'multifly','Multi Fly rear raise':'multifly','Reverse pec deck':'pecfly','Pec deck fly':'pecfly','Lat pulldown':'lat-s33',
+  'Chest-supported row':'row-s34','Chest press':'chest-s13','Triceps extension':'triceps-s42','Biceps curl machine':'biceps-s40',
+  'Dumbbell bench press':'bench-fw163','Chest-supported lateral raise':'bench-fw163'};
+const photoSrc = en => PHOTO[en] ? `img/${PHOTO[en]}.jpg` : null;
+const thumb = en => photoSrc(en) ? `<button class="thumb" data-act="zoom" data-src="${photoSrc(en)}" aria-label="Фото тренажера"><img src="${photoSrc(en)}" alt="" loading="lazy"></button>` : '';
 function techHtml(en){
   const L = lib(en), t = L.tech; if (!t) return '';
   const m = L.muscles;
-  const figure = m ? `<div class="tfig">${bodySvg(k => m.p.includes(k) ? 'mp' : m.s.includes(k) ? 'ms' : 'm0', k => P.muscles[k] || k, "Задіяні м'язи")}</div>` : '';
+  const ph = photoSrc(en);
+  const figure0 = m ? `<div class="tfig">${bodySvg(k => m.p.includes(k) ? 'mp' : m.s.includes(k) ? 'ms' : 'm0', k => P.muscles[k] || k, "Задіяні м'язи")}</div>` : '';
+  const figure = ph ? `<div class="tpair"><button class="tphoto" data-act="zoom" data-src="${ph}" aria-label="Фото тренажера"><img src="${ph}" alt="Тренажер"></button>${figure0}</div>` : figure0;
   const pers = t[person] ? `<p class="pers"><b>${esc(who())}:</b> ${esc(t[person])}</p>` : '';
   return `<div class="tech">${figure}
     <h5>Як працює</h5><p>${esc(t.how)}</p>
@@ -338,9 +349,9 @@ function workoutScreen(){
     <div class="progress"><i style="width:${pct}%"></i></div>
     <div class="card">
       <div class="kindtag ${st.kind === 'extra' ? 'extra' : ''}">${kindLbl}${st.isAlt ? ' · заміна' : ''}${inDeload() && st.type === 'weight' ? ' · легкий тиждень −25%' : ''}</div>
-      <h1 class="exname">${esc(st.en)}</h1>
+      <div class="exhead"><div class="grow"><h1 class="exname">${esc(st.en)}</h1>
       <p class="exua">${esc(st.ua || L.ua || '')}</p>
-      ${L.mach ? `<p class="mach">${esc(L.mach)}</p>` : ''}
+      ${L.mach ? `<p class="mach">${esc(L.mach)}</p>` : ''}</div>${thumb(st.en)}</div>
       ${S.mnotes[st.en] ? `<button class="mnote" data-act="mnote">${ic('tool')} ${esc(S.mnotes[st.en])}</button>` : ''}
       ${st.note ? `<p class="note">${esc(st.note)}</p>` : ''}
       <p class="dose">План: <b>${esc(st.dose)}</b></p>
@@ -350,7 +361,7 @@ function workoutScreen(){
       ${feelHtml(st, it)}
       <div class="tools">
         ${L.tech ? `<button class="btn" data-act="tech" aria-expanded="${techOpen}">${ic('book')} Техніка</button>` : ''}
-        ${L.video ? `<a class="btn" style="display:grid;place-items:center;text-decoration:none" href="${esc(L.video)}" target="_blank" rel="noopener">${ic('video')} Відео</a>` : ''}
+        ${L.video ? `<a class="btn" style="text-decoration:none" href="${esc(L.video)}" target="_blank" rel="noopener">${ic('video')} Відео</a>` : ''}
         ${st.kind !== 'warm' ? `<button class="btn" data-act="busy">${ic('swap')} Зайнято?</button>` : ''}
         ${st.kind !== 'warm' && L.mach && L.mach !== 'Каремат' ? `<button class="btn" data-act="mnote">${ic('tool')} ${S.mnotes[st.en] ? 'Тренажер' : 'Тренажер'}</button>` : ''}
       </div>
@@ -859,6 +870,7 @@ document.addEventListener('click', e => {
     case 'saveew': { const w = S.workouts.find(x => x.id === d.id); if (!w) break;
       sheetEl.querySelectorAll('[data-ew]').forEach(inp => { const [wi, si, f] = inp.dataset.ew.split(':'); const it = w.items[+wi]; if (it && it.sets[+si]) it.sets[+si][f] = num(inp.value); });
       w.tonnage = tonnageOf(w.items); recheckAch(); checkAch(); save(); closeSheet(); render(); toast('Тренування оновлено ✓'); break; }
+    case 'zoom': openSheet(`<img class="zoomimg" src="${esc(d.src)}" alt="Фото тренажера">`); break;
     case 'minimize': closeSheet(); releaseWake(); selDay = null; go('today'); break;
     case 'resume': startWorkout(S.active.day); break;
     case 'backup': backup(); break;

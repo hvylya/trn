@@ -1,7 +1,8 @@
 /* Офлайн: усі файли застосунку зберігаються на телефоні. Змінюй VERSION при кожному оновленні. */
-const VERSION = 'trn-v1.4.1';
+const VERSION = 'trn-v1.5.1';
 const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'program.js', 'bodymap.js', 'manifest.webmanifest',
-  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
+  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
+  'img/adductor.jpg', 'img/bench-fw163.jpg', 'img/biceps-s40.jpg', 'img/chest-s13.jpg', 'img/hipthrust-drax.jpg', 'img/lat-s33.jpg', 'img/legcurl-s72.jpg', 'img/legext-s71.jpg', 'img/legpress-hack.jpg', 'img/legpress-s70.jpg', 'img/ms50.jpg', 'img/multifly.jpg', 'img/pecfly.jpg', 'img/rack-platform.jpg', 'img/row-s34.jpg', 'img/tbar-drax.jpg', 'img/triceps-s42.jpg', 'img/vsquat-drax.jpg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES.map(u => new Request(u, {cache: 'reload'})))).then(() => self.skipWaiting()));
 });
