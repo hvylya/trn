@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -55,12 +55,13 @@ const LS = {
 };
 let person = LS.get('trn:person', null);
 let S = null;
-const blank = () => ({ v:1, settings:{duration:75, restHeavy:150, restMain:120, restIso:90, restCore:45}, blockStart:null, blockLen:8, mnotes:{}, home:{}, deloadUntil:null, deloadSnooze:null, cpSeen:{}, workouts:[], active:null, measurements:[], ach:{}, lastBackup:null });
-function load(){ S = Object.assign(blank(), person ? LS.get('trn:data:' + person, {}) : {}); S.settings = Object.assign(blank().settings, S.settings); }
+const blank = () => ({ v:1, settings:{duration:90, restHeavy:150, restMain:120, restIso:90, restCore:45}, blockStart:null, blockLen:8, mnotes:{}, home:{}, deloadUntil:null, deloadSnooze:null, cpSeen:{}, workouts:[], active:null, measurements:[], ach:{}, lastBackup:null });
+function load(){ S = Object.assign(blank(), person ? LS.get('trn:data:' + person, {}) : {}); S.settings = Object.assign(blank().settings, S.settings); if (!S.settings.durTouched) S.settings.duration = 90; }
 function save(){ if (person) LS.set('trn:data:' + person, S); }
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
-const THEMES = [['dark','Вечірній зал','#0f1115','#ff7a59'],['light','Денна','#f4f5f7','#e5553a'],['neon','Неон','#0a0a0a','#c6ff3d'],['berry','Полуничний шейк','#1a0f17','#ff6fae'],['mint','Мʼятний шейк','#edf7f3','#159f6f'],['ocean','Океан','#0b1220','#4cc3ff']];
-function applyTheme(){ const t = LS.get('trn:theme', 'dark'); document.documentElement.dataset.theme = t; const th = THEMES.find(x => x[0] === t) || THEMES[0]; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = th[2]; }
+const THEMES = [['mocha','Catppuccin Mocha','#1e1e2e','#cba6f7'],['latte','Catppuccin Latte','#eff1f5','#8839ef'],['dawn','Rosé Pine Dawn','#faf4ed','#d7827e'],['nord','Nord','#2e3440','#88c0d0'],['gruvbox','Gruvbox','#282828','#fe8019'],['tokyo','Tokyo Night','#1a1b26','#7aa2f7']];
+const curTheme = () => { const t = LS.get('trn:theme', 'mocha'); return THEMES.some(x => x[0] === t) ? t : 'mocha'; };
+function applyTheme(){ const t = curTheme(); document.documentElement.dataset.theme = t; const th = THEMES.find(x => x[0] === t) || THEMES[0]; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = th[2]; }
 applyTheme();
 
 /* ---------- програма ---------- */
@@ -194,6 +195,8 @@ const ACH = [
   ['m4','📐','Заміри 4 тижні поспіль', s => { const ws = new Set(s.measurements.map(m => weekStart(new Date(m.date).getTime()))); let k = weekStart(Date.now()), n = 0; if (!ws.has(k)) k = weekStart(k - 3 * 864e5); while (ws.has(k)){ n++; k = weekStart(k - 3 * 864e5); } return n >= 4; }]
 ];
 const achList = () => ACH.filter(a => !a[4] || a[4] === person);
+/* після видалення: прибрати ачівки, умова яких більше не виконується */
+function recheckAch(){ const lost = []; Object.keys(S.ach).forEach(id => { const a = achById(id); let ok = false; try { ok = a && !!a[3](S); } catch(e){} if (!ok){ lost.push(id); delete S.ach[id]; } }); return lost; }
 function checkAch(){ const fresh = []; achList().forEach(([id,,, test]) => { if (!S.ach[id]){ let ok = false; try { ok = !!test(S); } catch(e){} if (ok){ S.ach[id] = Date.now(); fresh.push(id); } } }); return fresh; }
 const achById = id => ACH.find(a => a[0] === id);
 
@@ -714,9 +717,9 @@ function settingsSheet(){
   const s = S.settings;
   openSheet(`<h2>Налаштування</h2>
     <p>Тривалість тренування</p>
-    <div class="seg" role="group" aria-label="Тривалість">${[75, 90].map(v => `<button data-dur="${v}" aria-pressed="${s.duration === v}">${v} хв</button>`).join('')}</div>
+    <div class="seg" role="group" aria-label="Тривалість">${[90, 75].map(v => `<button data-dur="${v}" aria-pressed="${s.duration === v}">${v} хв</button>`).join('')}</div>
     <p style="margin-top:14px">Тема</p>
-    <div class="themes">${THEMES.map(([k, l, bg, ac]) => `<button data-theme="${k}" aria-pressed="${LS.get('trn:theme','dark') === k}" style="background:${bg};color:${ac}"><i><b style="background:${ac}"></b><b style="background:${bg};outline:1px solid ${ac}"></b></i>${l}</button>`).join('')}</div>
+    <div class="themes">${THEMES.map(([k, l, bg, ac]) => `<button data-theme="${k}" aria-pressed="${curTheme() === k}" style="background:${bg};color:${ac}"><i><b style="background:${ac}"></b><b style="background:${bg};outline:1px solid ${ac}"></b></i>${l}</button>`).join('')}</div>
     <p style="margin-top:14px">Відпочинок між підходами</p>
     <div class="opts">
       ${[['restHeavy','Важкі базові (5–8 повторів)',[120,150,180]],['restMain','Інші базові (8–12)',[90,120,150]],['restIso','Ізоляція',[60,90,120]],['restCore','Кор',[30,45,60]]].map(([k, l, vals]) => `<div style="padding:4px 0"><div class="small muted" style="margin-bottom:4px">${l}</div><span class="seg">${vals.map(v => `<button data-rest="${k}:${v}" aria-pressed="${s[k] === v}">${v >= 60 ? (v / 60).toString().replace('.', ',') + ' хв' : v + ' с'}</button>`).join('')}</span></div>`).join('')}
@@ -778,7 +781,7 @@ document.addEventListener('click', e => {
   if (d.feel && S.active){ const it = S.active.items[S.active.queue[S.active.idx]]; it.feel = it.feel === d.feel ? null : d.feel; save(); render(); return; }
   if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) toast(`${achById(fresh[0])[1]} Нова ачівка: ${esc(achById(fresh[0])[2])}`); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
   if (d.theme){ LS.set('trn:theme', d.theme); applyTheme(); settingsSheet(); return; }
-  if (d.dur){ S.settings.duration = +d.dur; save(); settingsSheet(); render(); return; }
+  if (d.dur){ S.settings.duration = +d.dur; S.settings.durTouched = true; save(); settingsSheet(); render(); return; }
   if (d.rest){ const [k, v] = d.rest.split(':'); S.settings[k] = +v; save(); settingsSheet(); return; }
   const A = S && S.active;
   switch (d.act){
@@ -815,7 +818,7 @@ document.addEventListener('click', e => {
     case 'docancel': S.active = null; save(); closeSheet(); releaseWake(); go('today'); break;
     case 'savefin': { const w = S.workouts.find(x => x.id === lastFinished.id); const n = document.getElementById('wnote'); if (w && n){ w.note = n.value.trim(); save(); } toast('Збережено ✓'); go('today'); break; }
     case 'delw': openSheet(`<h2>Видалити тренування?</h2><p>Це не можна скасувати.</p><div class="opts"><button data-act="dodelw" data-id="${d.id}">🗑 Видалити</button><button data-act="closesheet">Ні</button></div>`); break;
-    case 'dodelw': { const gone = S.workouts.find(w => w.id === d.id); S.workouts = S.workouts.filter(w => w.id !== d.id); undoBuf = {kind: 'w', item: gone}; save(); closeSheet(); render(); toast(`Тренування видалено <button class="undo" data-act="undo">Повернути</button>`, '', 6000); break; }
+    case 'dodelw': { const gone = S.workouts.find(w => w.id === d.id); S.workouts = S.workouts.filter(w => w.id !== d.id); undoBuf = {kind: 'w', item: gone, ach: Object.assign({}, S.ach)}; const lostW = recheckAch(); save(); closeSheet(); render(); toast(`Тренування видалено${lostW.length ? ` · ачівок знято: ${lostW.length}` : ''} <button class="undo" data-act="undo">Повернути</button>`, '', 6000); break; }
     case 'addm': addMeasureSheet(); break;
     case 'savem': {
       const date = document.getElementById('mdate').value || iso(new Date()); const m = {date};
@@ -826,9 +829,9 @@ document.addEventListener('click', e => {
       toast(fresh.length ? `${achById(fresh[0])[1]} Нова ачівка: ${esc(achById(fresh[0])[2])}` : 'Заміри збережено ✓'); break; }
     case 'editm': addMeasureSheet(d.date); break;
     case 'delm': { if (!t.classList.contains('armed')){ t.classList.add('armed'); t.innerHTML = `${ic('trash')} Точно видалити? Натисни ще раз`; break; }
-      const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone}; save(); closeSheet(); render();
+      const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone, ach: Object.assign({}, S.ach)}; recheckAch(); save(); closeSheet(); render();
       toast(`Запис видалено <button class="undo" data-act="undo">Повернути</button>`, '', 6000); break; }
-    case 'undo': if (undoBuf){ if (undoBuf.kind === 'm') S.measurements.push(undoBuf.item); if (undoBuf.kind === 'w'){ S.workouts.push(undoBuf.item); S.workouts.sort((a, b) => a.start - b.start); } undoBuf = null; save(); render(); toast('Повернуто ✓'); } break;
+    case 'undo': if (undoBuf){ if (undoBuf.kind === 'm') S.measurements.push(undoBuf.item); if (undoBuf.kind === 'w'){ S.workouts.push(undoBuf.item); S.workouts.sort((a, b) => a.start - b.start); } if (undoBuf.ach) S.ach = undoBuf.ach; undoBuf = null; save(); render(); toast('Повернуто ✓'); } break;
     case 'minimize': closeSheet(); releaseWake(); selDay = null; go('today'); break;
     case 'resume': startWorkout(S.active.day); break;
     case 'backup': backup(); break;
