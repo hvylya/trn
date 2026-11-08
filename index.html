@@ -24,7 +24,15 @@
 <script src="app.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  const hadController = !!navigator.serviceWorker.controller;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => { try { reg.update(); } catch(e){} }).catch(() => {});
+  });
+  // нова версія активувалась — перезавантажуємо, дані тренувань не зачіпаються
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return; reloading = true; location.reload();
+  });
 }
 </script>
 </body>

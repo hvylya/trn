@@ -1,9 +1,9 @@
 /* Офлайн: усі файли застосунку зберігаються на телефоні. Змінюй VERSION при кожному оновленні. */
-const VERSION = 'trn-v1.1.0';
+const VERSION = 'trn-v1.1.1';
 const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'program.js', 'bodymap.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES.map(u => new Request(u, {cache: 'reload'})))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));

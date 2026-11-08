@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -813,6 +813,7 @@ document.addEventListener('change', e => {
 });
 
 /* ---------- старт ---------- */
+(function(){ const seen = LS.get('trn:version', null); if (seen && seen !== APP_VERSION) setTimeout(() => toast(`Застосунок оновлено ✓ версія ${APP_VERSION}`), 600); LS.set('trn:version', APP_VERSION); })();
 load();
 if (S && S.active) screen = 'workout';
 render();
