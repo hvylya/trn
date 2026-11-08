@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -411,7 +411,11 @@ function tick(){
       const rl = (A.restEnd - Date.now()) / 1000;
       rest.hidden = false;
       rest.className = 'rest' + (rl <= 0 ? ' over' : '');
-      rest.innerHTML = `<div>${rl > 0 ? `⏳ Відпочинок <b>${mmss(rl)}</b>` : '⏰ <b>Можна наступний підхід</b>'}<button data-act="rest30">+30 с</button><button data-act="restx" aria-label="Закрити">✕</button></div>`;
+      /* кнопки створюємо один раз, щосекунди міняємо лише текст — інакше на iPhone натискання «губляться» */
+      if (!rest.firstElementChild){ rest.innerHTML = `<div><span id="restlbl"></span><button data-act="rest30">+30 с</button><button data-act="restx" aria-label="Закрити відпочинок">${ic('x')}</button></div>`; }
+      const lbl = document.getElementById('restlbl');
+      const txt = rl > 0 ? `${ic('timer')} Відпочинок <b>${mmss(rl)}</b>` : `${ic('check')} <b>Можна наступний підхід</b>`;
+      if (lbl.dataset.t !== txt){ lbl.innerHTML = txt; lbl.dataset.t = txt; }
       if (rl <= 0 && !A.restBeeped){ A.restBeeped = true; beep(); flash(); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch(e){} }
       if (rl < -45){ A.restEnd = null; rest.hidden = true; save(); }
     } else rest.hidden = true;
@@ -822,7 +826,7 @@ document.addEventListener('click', e => {
       const cur = s[d.f] == null ? (d.f === 'w' ? 0 : 0) : s[d.f];
       s[d.f] = Math.max(0, Math.round((cur + step) * 100) / 100); save(); render(); break; }
     case 'rest30': if (A && A.restEnd){ A.restEnd = Math.max(A.restEnd, Date.now()) + 30000; A.restBeeped = false; save(); tick(); } break;
-    case 'restx': if (A){ A.restEnd = null; save(); tick(); } break;
+    case 'restx': if (A){ A.restEnd = null; save(); const r = document.getElementById('rest'); if (r){ r.hidden = true; r.innerHTML = ''; } } break;
     case 'usealt': { const id = A.queue[A.idx]; A.items[id].useAlt = true; fillSets(id); save(); closeSheet(); render(); break; }
     case 'usebase': { const id = A.queue[A.idx]; A.items[id].useAlt = false; fillSets(id); save(); closeSheet(); render(); break; }
     case 'toend': { const id = A.queue.splice(A.idx, 1)[0]; const firstExtra = A.queue.findIndex(q => effStep(A.day, q).kind === 'extra'); A.queue.splice(firstExtra < 0 ? A.queue.length : firstExtra, 0, id); techOpen = false; save(); closeSheet(); render(); toast('Перенесено в кінець черги'); break; }
