@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -21,6 +21,32 @@ const weekStart = ts => { const d = new Date(ts); d.setHours(0,0,0,0); const k =
 const DAY_ORDER = ['mon','wed','fri'];
 const DAY_NAME = {mon:'Понеділок', wed:'Середа', fri:'Пʼятниця'};
 const DAY_TAB = {mon:'Пн', wed:'Ср', fri:'Пт'};
+
+/* ---------- іконки (власні, лінійні) ---------- */
+const IP = {
+  gym:'<path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/>',
+  home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11h13V9"/><path d="M10 20v-5h4v5"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  chart:'<path d="M3.5 20.5h17"/><path d="M4.5 16l5-5 4 3.5 6-7"/><path d="M15 7.5h4.5V12"/>',
+  ruler:'<path d="M14.6 3.4 20.6 9.4 9.4 20.6 3.4 14.6z"/><path d="M7.5 12l1.8 1.8M10 9.5l1.2 1.2M12.5 7l1.8 1.8"/>',
+  sliders:'<path d="M4 6.5h9M17 6.5h3M4 12h3M11 12h9M4 17.5h11M19 17.5h1"/><circle cx="15" cy="6.5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17.5" r="2"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  down:'<path d="M6 9l6 6 6-6"/>',
+  left:'<path d="M15 18l-6-6 6-6"/>',
+  right:'<path d="M9 6l6 6-6 6"/>',
+  list:'<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.5" cy="6.5" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="17.5" r="1"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  book:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5v-15"/>',
+  video:'<circle cx="12" cy="12" r="9"/><path d="M10 8.5l5.5 3.5-5.5 3.5z"/>',
+  swap:'<path d="M7 4 3 8l4 4M3 8h13M17 20l4-4-4-4M21 16H8"/>',
+  tool:'<path d="M14.5 6.5a4 4 0 0 0-5.3 5L3.5 17.2l3.3 3.3 5.7-5.7a4 4 0 0 0 5-5.3l-2.4 2.4-2.3-.6-.6-2.3z"/>',
+  trash:'<path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/>',
+  pencil:'<path d="M4 20h4L19.5 8.5l-4-4L4 16z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  play:'<path d="M8 5.5v13l10.5-6.5z"/>',
+  timer:'<circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.5 2M9.5 2.5h5"/>'
+};
+const ic = (n, cls) => `<svg class="ic ${cls || ''}" viewBox="0 0 24 24" aria-hidden="true">${IP[n]}</svg>`;
 
 /* ---------- сховище ---------- */
 const LS = {
@@ -47,17 +73,30 @@ const who = () => P.people[person];
 let screen = 'today', tab = 'today', selDay = null, histOpen = null, chartEx = null, mKey = 'waist';
 function go(s){ screen = s; if (['today','home','history','progress','measure'].includes(s)) tab = s; render(); window.scrollTo(0, 0); }
 
-function toast(html, cls){
+function toast(html, cls, ms){
   toastEl.className = cls || ''; toastEl.innerHTML = html; toastEl.hidden = false;
-  clearTimeout(toast.t); toast.t = setTimeout(() => { toastEl.hidden = true; }, cls === 'pr' ? 3600 : 2400);
+  clearTimeout(toast.t); toast.t = setTimeout(() => { toastEl.hidden = true; }, ms || (cls === 'pr' ? 3600 : 2400));
 }
-function openSheet(html){ sheetEl.innerHTML = `<div class="sh" role="dialog" aria-modal="true">${html}</div>`; sheetEl.hidden = false; }
+function openSheet(html){
+  sheetEl.innerHTML = `<div class="sh" role="dialog" aria-modal="true"><div class="grab" aria-hidden="true"></div><button class="shx" data-act="closesheet" aria-label="Закрити">${ic('x')}</button>${html}</div>`;
+  sheetEl.hidden = false;
+  const sh = sheetEl.firstElementChild; let y0 = null, dy = 0;
+  sh.addEventListener('touchstart', e => { y0 = sh.scrollTop <= 0 ? e.touches[0].clientY : null; dy = 0; }, {passive: true});
+  sh.addEventListener('touchmove', e => { if (y0 == null) return; dy = e.touches[0].clientY - y0; if (dy > 0) sh.style.transform = `translateY(${dy}px)`; }, {passive: true});
+  sh.addEventListener('touchend', () => { if (y0 == null) return; if (dy > 90) closeSheet(); else sh.style.transform = ''; y0 = null; });
+}
 function closeSheet(){ sheetEl.hidden = true; sheetEl.innerHTML = ''; }
 sheetEl.addEventListener('click', e => { if (e.target === sheetEl) closeSheet(); });
 
 function tabbar(){
-  const t = [['today','🏋️','Зал'],['home','🛋️','Дім'],['history','🗓️','Історія'],['progress','📈','Прогрес'],['measure','📏','Заміри']];
-  return `<div class="tabbar"><nav>${t.map(([k,i,l]) => `<button data-go="${k}" ${tab === k ? 'aria-current="page"' : ''}><span>${i}</span>${l}</button>`).join('')}</nav></div>`;
+  const t = [['today','gym','Зал'],['home','home','Дім'],['history','cal','Історія'],['progress','chart','Прогрес'],['measure','ruler','Заміри']];
+  return `${activeBar()}<div class="tabbar"><nav>${t.map(([k,i,l]) => `<button data-go="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ic(i)}${l}</button>`).join('')}</nav></div>`;
+}
+/* панель «тренування триває» над меню — з будь-якого екрана повертає до тренування */
+function activeBar(){
+  const A = S && S.active; if (!A || screen === 'today') return '';
+  const done = A.queue.filter(q => { const x = A.items[q]; return x && x.sets.length && x.sets.every(s => s.done); }).length;
+  return `<button class="activebar" data-act="resume"><span class="pulse"></span><span class="grow"><b>Тренування триває</b><small>${DAY_NAME[A.day]} · ${done}/${A.queue.length} · <span id="abclock">${mmss((Date.now() - A.start) / 1000)}</span></small></span><span class="ab-go">Продовжити ${ic('right')}</span></button>`;
 }
 
 /* ---------- обчислення ---------- */
@@ -172,6 +211,7 @@ function chooseScreen(){
 /* ---------- сьогодні ---------- */
 function todayScreen(){
   const day = selDay || (S.active ? S.active.day : nextDay());
+  const cont = S.active && S.active.day !== day ? ` (${DAY_NAME[S.active.day].toLowerCase()})` : '';
   const steps = plan(day).filter(s => s.kind !== 'extra');
   const ws = weekStart(Date.now());
   const thisWeek = new Set(S.workouts.filter(w => weekStart(w.start) === ws).map(w => w.day));
@@ -180,7 +220,7 @@ function todayScreen(){
   const bw = blockWeek();
   const backupOld = S.workouts.length >= 3 && (!S.lastBackup || Date.now() - S.lastBackup > 30 * 864e5);
   const names = steps.filter(s => s.kind === 'main').map(s => s.en);
-  return `<div class="top"><h1>Привіт, ${esc(who())}</h1><button class="iconbtn" data-act="settings" aria-label="Налаштування">⚙️</button></div>
+  return `<div class="top"><h1>Привіт, ${esc(who())}</h1><button class="iconbtn" data-act="settings" aria-label="Налаштування">${ic('sliders')}</button></div>
     <div class="row wrap" style="margin-bottom:14px">
       <span class="pill">${bw <= blockLen() ? `Тиждень ${bw} з ${blockLen()}` : 'Блок завершено 🎓'}</span>
       <span class="pill">🔥 Серія: ${streak} ${streak === 1 ? 'тиждень' : streak >= 2 && streak <= 4 ? 'тижні' : 'тижнів'}${si.frozen ? ' · ❄️' : ''}</span>
@@ -191,14 +231,14 @@ function todayScreen(){
     <div class="card">
       <div class="row" style="justify-content:space-between">
         <h2>${DAY_NAME[day]}</h2>
-        <div class="seg" role="group" aria-label="День">${DAY_ORDER.map(k => `<button data-day="${k}" aria-pressed="${k === day}" ${S.active ? 'disabled' : ''}>${DAY_TAB[k]}</button>`).join('')}</div>
+        <div class="seg" role="group" aria-label="День">${DAY_ORDER.map(k => `<button data-day="${k}" aria-pressed="${k === day}">${DAY_TAB[k]}</button>`).join('')}</div>
       </div>
       <p class="muted small" style="margin-top:4px">${steps.length} вправ · ~${est} хв · ${S.settings.duration} хв у залі</p>
       <ul class="preview">${names.map(n => `<li><b>${esc(n)}</b> · ${esc(lib(n).ua || '')}</li>`).join('')}</ul>
-      <button class="big" data-act="start" data-dayv="${day}">${S.active ? '▶ ПРОДОВЖИТИ ТРЕНУВАННЯ' : '▶ ПОЧАТИ ТРЕНУВАННЯ'}</button>
+      <button class="big" data-act="start" data-dayv="${day}">${S.active ? `${ic('play')} ПРОДОВЖИТИ${cont}` : `${ic('play')} ПОЧАТИ ТРЕНУВАННЯ`}</button>
       <div class="dots">${DAY_ORDER.map(k => `<span class="dot ${thisWeek.has(k) ? 'done' : ''}"><i></i>${DAY_TAB[k]}</span>`).join('')}<span class="dot" style="margin-left:auto">цей тиждень</span></div>
     </div>
-    <button class="big ghost" data-act="dayplan" data-dayv="${day}">План дня й техніка</button>
+    <button class="big ghost" data-act="dayplan" data-dayv="${day}">${ic('book')} План дня й техніка</button>
     ${tabbar()}`;
 }
 
@@ -284,12 +324,12 @@ function workoutScreen(){
     rows = `<div class="sets">${hdr}${it.sets.map((s, i) => `<div class="set ${s.done ? 'done' : ''}"><span class="n">${i + 1}</span>
       ${st.type === 'weight' ? stepper(i, 'w', s.w, 'кг', st.step) : `<span class="muted small" style="text-align:center">${st.type === 'body' ? 'вага тіла' : ''}</span>`}
       ${stepper(i, 'r', s.r, unitR, st.unit === 'sec' ? 5 : st.unit === 'm' ? 5 : 1)}
-      <button class="check" data-act="done" data-i="${i}" aria-label="підхід ${i + 1} зроблено">✓</button></div>`).join('')}</div>`;
+      <button class="check" data-act="done" data-i="${i}" aria-label="підхід ${i + 1} зроблено">${ic('check')}</button></div>`).join('')}</div>`;
   }
   const lastTxt = last ? `Минулого разу (${dShort(last.w.start)}): <b>${last.it.sets.filter(s => s.done).map(s => st.type === 'weight' ? `${fmt(s.w)} кг × ${fmt(s.r)}` : `${fmt(s.r)}${unitR ? ' ' + unitR : ''}`).join(', ') || '—'}</b>` : 'Вперше: підбери вагу з запасом 2–3 повтори.';
   const isLast = A.idx === A.queue.length - 1;
   const nextIsExtra = !isLast && effStep(A.day, A.queue[A.idx + 1]).kind === 'extra' && st.kind !== 'extra';
-  return `<div class="wtop"><button class="iconbtn" data-act="queue" aria-label="План тренування">☰</button>
+  return `<div class="wtop"><button class="iconbtn wide" data-act="minimize" aria-label="Згорнути тренування">${ic('down')}<span>Згорнути</span></button><button class="iconbtn" data-act="queue" aria-label="Усі вправи">${ic('list')}</button>
       <span class="muted">${A.idx + 1}/${A.queue.length}</span>
       <div class="clock" id="clock"></div></div>
     <div class="progress"><i style="width:${pct}%"></i></div>
@@ -298,7 +338,7 @@ function workoutScreen(){
       <h1 class="exname">${esc(st.en)}</h1>
       <p class="exua">${esc(st.ua || L.ua || '')}</p>
       ${L.mach ? `<p class="mach">${esc(L.mach)}</p>` : ''}
-      ${S.mnotes[st.en] ? `<button class="mnote" data-act="mnote">⚙️ ${esc(S.mnotes[st.en])}</button>` : ''}
+      ${S.mnotes[st.en] ? `<button class="mnote" data-act="mnote">${ic('tool')} ${esc(S.mnotes[st.en])}</button>` : ''}
       ${st.note ? `<p class="note">${esc(st.note)}</p>` : ''}
       <p class="dose">План: <b>${esc(st.dose)}</b></p>
       ${st.type === 'weight' || last ? `<div class="last">${lastTxt}</div>` : ''}
@@ -306,10 +346,10 @@ function workoutScreen(){
       ${rows}
       ${feelHtml(st, it)}
       <div class="tools">
-        ${L.tech ? `<button class="btn" data-act="tech" aria-expanded="${techOpen}">Техніка ${techOpen ? '▴' : '▾'}</button>` : ''}
-        ${L.video ? `<a class="btn" style="display:grid;place-items:center;text-decoration:none" href="${esc(L.video)}" target="_blank" rel="noopener">▶ Відео</a>` : ''}
-        ${st.kind !== 'warm' ? `<button class="btn" data-act="busy">Зайнято?</button>` : ''}
-        ${st.kind !== 'warm' && L.mach && L.mach !== 'Каремат' ? `<button class="btn" data-act="mnote">⚙️ ${S.mnotes[st.en] ? 'Змінити' : 'Налаштування'}</button>` : ''}
+        ${L.tech ? `<button class="btn" data-act="tech" aria-expanded="${techOpen}">${ic('book')} Техніка</button>` : ''}
+        ${L.video ? `<a class="btn" style="display:grid;place-items:center;text-decoration:none" href="${esc(L.video)}" target="_blank" rel="noopener">${ic('video')} Відео</a>` : ''}
+        ${st.kind !== 'warm' ? `<button class="btn" data-act="busy">${ic('swap')} Зайнято?</button>` : ''}
+        ${st.kind !== 'warm' && L.mach && L.mach !== 'Каремат' ? `<button class="btn" data-act="mnote">${ic('tool')} ${S.mnotes[st.en] ? 'Тренажер' : 'Тренажер'}</button>` : ''}
       </div>
       ${techOpen ? techHtml(st.en) : ''}
     </div>
@@ -326,12 +366,12 @@ function feelHtml(st, it){
 }
 function navButtons(st, isLast, nextIsExtra){
   const A = S.active;
-  const back = `<button data-act="prev" ${A.idx === 0 ? 'disabled' : ''}>◀ Назад</button>`;
-  const fin = `<button class="fin" data-act="finish">Завершити ✓</button>`;
+  const back = `<button data-act="prev" ${A.idx === 0 ? 'disabled' : ''}>${ic('left')} Назад</button>`;
+  const fin = `<button class="fin" data-act="finish">${ic('check')} Завершити</button>`;
   if (isLast) return back + fin;
-  if (st.kind === 'extra') return fin + `<button class="acc" data-act="next">Далі ▶</button>`;
-  if (nextIsExtra && allMainDone()) return fin + `<button class="acc" data-act="next">Якщо є час ▶</button>`;
-  return back + `<button class="acc" data-act="next">Далі ▶</button>`;
+  if (st.kind === 'extra') return fin + `<button class="acc" data-act="next">Далі ${ic('right')}</button>`;
+  if (nextIsExtra && allMainDone()) return fin + `<button class="acc" data-act="next">Якщо є час ${ic('right')}</button>`;
+  return back + `<button class="acc" data-act="next">Далі ${ic('right')}</button>`;
 }
 function allMainDone(){ const A = S.active; return A.queue.every(q => { const st = effStep(A.day, q); if (st.kind === 'extra') return true; const x = A.items[q]; return x && x.sets.length && x.sets.every(s => s.done); }); }
 function mainLeft(){ const A = S.active; return A.queue.filter(q => { const st = effStep(A.day, q); if (st.kind === 'extra') return false; const x = A.items[q]; return !(x && x.sets.length && x.sets.every(s => s.done)); }); }
@@ -340,6 +380,7 @@ function mainLeft(){ const A = S.active; return A.queue.filter(q => { const st =
 let audioCtx = null;
 function beep(){ try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.frequency.value = 880; g.gain.setValueAtTime(.001, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.3, audioCtx.currentTime + .02); g.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + .5); o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + .55); } catch(e){} }
 function tick(){
+  const ab = document.getElementById('abclock'); if (ab && S && S.active) ab.textContent = mmss((Date.now() - S.active.start) / 1000);
   if (screen !== 'workout' || !S.active) return;
   const A = S.active, el = document.getElementById('clock');
   const elapsed = (Date.now() - A.start) / 1000, total = S.settings.duration * 60, left = total - elapsed;
@@ -521,7 +562,7 @@ function histSheet(id){
     <p>${new Date(w.start).toTimeString().slice(0, 5)}–${new Date(w.end).toTimeString().slice(0, 5)} · ${w.sets} підходів · ${fmtInt(w.tonnage)} кг</p>
     ${w.note ? `<p>📝 ${esc(w.note)}</p>` : ''}
     <div>${w.items.map(it => `<div class="hex"><b>${esc(it.en)}</b>${it.alt ? ' <small class="muted">(заміна)</small>' : ''}<div class="s">${it.sets.map(s => it.type === 'weight' ? `${fmt(s.w)} кг × ${fmt(s.r)}` : s.r != null ? `${fmt(s.r)}${it.unit === 'sec' ? ' с' : it.unit === 'm' ? ' м' : ''}` : '✓').join(' · ')}</div></div>`).join('')}</div>
-    <div class="opts" style="margin-top:14px"><button data-act="delw" data-id="${w.id}">🗑 Видалити це тренування<small>Назавжди</small></button><button data-act="closesheet">Закрити</button></div>`);
+    <div class="opts" style="margin-top:14px"><button data-act="delw" data-id="${w.id}">Видалити це тренування<small>Можна буде повернути одразу після видалення</small></button><button data-act="closesheet">Закрити</button></div>`);
 }
 
 /* ---------- прогрес ---------- */
@@ -648,22 +689,24 @@ function measureScreen(){
   const pts = M.filter(m => m[mKey] != null).map(m => ({x: new Date(m.date).getTime(), y: m[mKey]}));
   const mf = MF.find(f => f[0] === mKey);
   return `<div class="top"><h1>Заміри</h1></div>
-    <button class="big" data-act="addm">+ Додати заміри</button>
+    <button class="big" data-act="addm">${ic('plus')} Додати заміри</button>
     ${last ? `<div class="card" style="margin-top:12px"><h3>Останні · ${dShort(new Date(last.date).getTime())}</h3>
       ${MF.map(([k, l, u]) => { const v = last[k], p = prev ? prev[k] : null; const dlt = v != null && p != null ? v - p : null;
         return `<div class="mrow"><span>${l}</span><span>${p != null && v != null ? `${fmt(p)} → ` : ''}<b>${fmt(v)}</b> ${u}${dlt ? ` <span class="${dlt < 0 ? 'dn' : 'upc'}">${dlt > 0 ? '↑' : '↓'}${fmt(Math.abs(dlt))}</span>` : ''}</span></div>`; }).join('')}</div>
       <div class="card"><h3>Графік</h3><select data-act="mkey" aria-label="Замір">${MF.map(([k, l]) => `<option value="${k}" ${k === mKey ? 'selected' : ''}>${l}</option>`).join('')}</select>${lineChart(pts, mf[1] + ', ' + mf[2])}
       <p class="muted small" style="margin-top:6px">Дивись на тенденцію за 3–4 тижні, а не на різницю між двома тижнями.</p></div>
-      <div class="card"><h3>Усі записи</h3>${[...M].reverse().map(m => `<div class="mrow"><span>${dShort(new Date(m.date).getTime())}</span><span class="small">${MF.filter(([k]) => m[k] != null).map(([k,, u]) => fmt(m[k])).join(' · ')} <button class="btn" style="min-height:32px;padding:0 10px;margin-left:6px" data-act="delm" data-date="${m.date}" aria-label="Видалити">✕</button></span></div>`).join('')}</div>`
+      <div class="card"><h3>Усі записи</h3><p class="muted small" style="margin:-4px 0 6px">Натисни на запис, щоб змінити.</p>${[...M].reverse().map(m => `<button class="mitem" data-act="editm" data-date="${m.date}"><span>${dShort(new Date(m.date).getTime())}</span><span class="small muted">${MF.filter(([k]) => m[k] != null).map(([k]) => fmt(m[k])).join(' · ')}</span>${ic('right')}</button>`).join('')}</div>`
       : `<div class="empty">Вноси заміри раз на тиждень, вранці натщесерце — тут зʼявляться зміни й графіки.</div>`}
     ${tabbar()}`;
 }
-function addMeasureSheet(){
+function addMeasureSheet(editDate){
   const M = [...S.measurements].sort((a, b) => a.date.localeCompare(b.date)); const last = M[M.length - 1] || {};
-  openSheet(`<h2>Нові заміри</h2><p>Порожні поля можна пропустити.</p>
-    <div class="field" style="margin-bottom:10px"><label for="mdate">Дата</label><input type="date" id="mdate" value="${iso(new Date())}"></div>
-    <div class="mgrid">${MF.map(([k, l, u]) => `<div class="field"><label for="m_${k}">${l}, ${u}</label><input id="m_${k}" inputmode="decimal" placeholder="${last[k] != null ? fmt(last[k]) : ''}"></div>`).join('')}</div>
-    <div class="opts" style="margin-top:14px"><button class="btn acc" style="text-align:center" data-act="savem">Зберегти</button></div>`);
+  const cur = editDate ? S.measurements.find(x => x.date === editDate) : null;
+  openSheet(`<h2>${cur ? 'Змінити заміри' : 'Нові заміри'}</h2><p>Порожні поля можна пропустити.</p>
+    <div class="field" style="margin-bottom:10px"><label for="mdate">Дата</label><input type="date" id="mdate" value="${cur ? cur.date : iso(new Date())}"></div>
+    <div class="mgrid">${MF.map(([k, l, u]) => `<div class="field"><label for="m_${k}">${l}, ${u}</label><input id="m_${k}" inputmode="decimal" value="${cur && cur[k] != null ? fmt(cur[k]) : ''}" placeholder="${!cur && last[k] != null ? fmt(last[k]) : ''}"></div>`).join('')}</div>
+    <button class="big" style="margin-top:14px" data-act="savem" data-orig="${cur ? cur.date : ''}">Зберегти</button>
+    ${cur ? `<button class="danger" data-act="delm" data-date="${cur.date}">${ic('trash')} Видалити запис</button>` : ''}`);
 }
 
 /* ---------- налаштування й резервна копія ---------- */
@@ -686,6 +729,7 @@ function settingsSheet(){
       <button data-act="switchp">👤 Змінити людину<small>Зараз: ${esc(who())}. Дані кожної зберігаються окремо</small></button>
     </div>
     <p class="muted small" style="margin-top:14px">Версія ${APP_VERSION} · програма від ${esc(P.version)}</p>
+    <button class="big" style="margin-top:12px" data-act="closesheet">Готово</button>
     <input type="file" id="restorefile" accept="application/json,.json" hidden>`);
 }
 async function backup(){
@@ -708,7 +752,7 @@ function restoreFrom(file){
 }
 
 /* ---------- екран не гасне під час тренування ---------- */
-let wake = null;
+let wake = null, undoBuf = null;
 async function requestWake(){ try { if ('wakeLock' in navigator && !wake){ wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch(e){ wake = null; } }
 function releaseWake(){ try { wake && wake.release(); } catch(e){} wake = null; }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && screen === 'workout' && S && S.active) requestWake(); });
@@ -771,16 +815,22 @@ document.addEventListener('click', e => {
     case 'docancel': S.active = null; save(); closeSheet(); releaseWake(); go('today'); break;
     case 'savefin': { const w = S.workouts.find(x => x.id === lastFinished.id); const n = document.getElementById('wnote'); if (w && n){ w.note = n.value.trim(); save(); } toast('Збережено ✓'); go('today'); break; }
     case 'delw': openSheet(`<h2>Видалити тренування?</h2><p>Це не можна скасувати.</p><div class="opts"><button data-act="dodelw" data-id="${d.id}">🗑 Видалити</button><button data-act="closesheet">Ні</button></div>`); break;
-    case 'dodelw': S.workouts = S.workouts.filter(w => w.id !== d.id); save(); closeSheet(); render(); break;
+    case 'dodelw': { const gone = S.workouts.find(w => w.id === d.id); S.workouts = S.workouts.filter(w => w.id !== d.id); undoBuf = {kind: 'w', item: gone}; save(); closeSheet(); render(); toast(`Тренування видалено <button class="undo" data-act="undo">Повернути</button>`, '', 6000); break; }
     case 'addm': addMeasureSheet(); break;
     case 'savem': {
       const date = document.getElementById('mdate').value || iso(new Date()); const m = {date};
       let any = false; MF.forEach(([k]) => { const v = num(document.getElementById('m_' + k).value); if (v != null){ m[k] = v; any = true; } });
       if (!any){ toast('Заповни хоча б одне поле'); break; }
-      S.measurements = S.measurements.filter(x => x.date !== date); S.measurements.push(m);
+      S.measurements = S.measurements.filter(x => x.date !== date && x.date !== d.orig); S.measurements.push(m);
       const fresh = checkAch(); save(); closeSheet(); render();
       toast(fresh.length ? `${achById(fresh[0])[1]} Нова ачівка: ${esc(achById(fresh[0])[2])}` : 'Заміри збережено ✓'); break; }
-    case 'delm': S.measurements = S.measurements.filter(x => x.date !== d.date); save(); render(); break;
+    case 'editm': addMeasureSheet(d.date); break;
+    case 'delm': { if (!t.classList.contains('armed')){ t.classList.add('armed'); t.innerHTML = `${ic('trash')} Точно видалити? Натисни ще раз`; break; }
+      const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone}; save(); closeSheet(); render();
+      toast(`Запис видалено <button class="undo" data-act="undo">Повернути</button>`, '', 6000); break; }
+    case 'undo': if (undoBuf){ if (undoBuf.kind === 'm') S.measurements.push(undoBuf.item); if (undoBuf.kind === 'w'){ S.workouts.push(undoBuf.item); S.workouts.sort((a, b) => a.start - b.start); } undoBuf = null; save(); render(); toast('Повернуто ✓'); } break;
+    case 'minimize': closeSheet(); releaseWake(); selDay = null; go('today'); break;
+    case 'resume': startWorkout(S.active.day); break;
     case 'backup': backup(); break;
     case 'restore': { const f = document.getElementById('restorefile'); f.onchange = () => f.files[0] && restoreFrom(f.files[0]); f.click(); break; }
     case 'dorestore': { const j = restoreFrom.pending; if (j){ person = j.person in P.people ? j.person : person; LS.set('trn:person', person); S = Object.assign(blank(), j.data); save(); toast('Дані відновлено ✓'); } closeSheet(); go('today'); break; }

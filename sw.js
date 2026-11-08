@@ -1,5 +1,5 @@
 /* Офлайн: усі файли застосунку зберігаються на телефоні. Змінюй VERSION при кожному оновленні. */
-const VERSION = 'trn-v1.1.1';
+const VERSION = 'trn-v1.2.0';
 const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'program.js', 'bodymap.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', e => {

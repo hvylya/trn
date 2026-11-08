@@ -57,7 +57,7 @@ h1,h2,h3,h4,h5,p{margin:0}
 .tabbar{position:fixed; left:0; right:0; bottom:0; z-index:20; background:color-mix(in srgb,var(--bg) 92%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-top:1px solid var(--line); padding:6px 8px calc(var(--safe-b) + 6px)}
 .tabbar nav{max-width:560px; margin:0 auto; display:grid; grid-template-columns:repeat(5,1fr)}
 .tabbar button{border:0; background:none; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:2px; font-size:12px; padding:6px 0; min-height:52px; cursor:pointer}
-.tabbar button span{font-size:22px; line-height:1}
+.tabbar button .ic{width:26px; height:26px}
 .tabbar button[aria-current="page"]{color:var(--accent)}
 
 /* workout */
@@ -236,3 +236,35 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 .hweek span.h{background:var(--ok); color:#06261a; font-weight:700}
 .hweek span.t{outline:2px solid var(--ink)}
 #toast.fun{font-size:18px; padding:14px 18px; background:var(--accent); color:var(--accent-ink); border:0}
+
+/* іконки */
+.ic{width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; vertical-align:-4px}
+.big .ic{width:22px; height:22px; margin-right:6px; vertical-align:-5px}
+.big .ic[viewBox] path[d^="M8 5.5"]{fill:currentColor}
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:6px}
+.wnav button{display:inline-flex; align-items:center; justify-content:center; gap:6px}
+.iconbtn .ic{width:22px; height:22px}
+.iconbtn.wide{width:auto; padding:0 12px 0 8px; gap:4px; display:inline-flex; align-items:center; font-weight:600; font-size:15px}
+.check .ic{width:24px; height:24px; stroke-width:2.6}
+.mnote{display:flex; align-items:center; gap:8px}
+/* панель «тренування триває» */
+.activebar{position:fixed; left:12px; right:12px; bottom:calc(var(--safe-b) + 74px); z-index:21; max-width:536px; margin:0 auto; display:flex; align-items:center; gap:10px; padding:10px 12px 10px 14px; border-radius:16px; border:0; background:var(--accent); color:var(--accent-ink); text-align:left; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.activebar b{display:block; font-size:15px}
+.activebar small{font-size:13px; opacity:.85; font-variant-numeric:tabular-nums}
+.ab-go{display:inline-flex; align-items:center; gap:2px; font-weight:800; font-size:15px; white-space:nowrap}
+.pulse{width:10px; height:10px; border-radius:50%; background:currentColor; animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
+#app:has(.activebar){padding-bottom:calc(var(--safe-b) + 160px)}
+/* шит */
+.sh{position:relative}
+.grab{width:40px; height:5px; border-radius:3px; background:var(--line); margin:-8px auto 10px}
+.shx{position:absolute; top:12px; right:12px; width:40px; height:40px; border-radius:50%; border:0; background:var(--surface2); color:var(--muted); display:grid; place-items:center; cursor:pointer}
+.sh h2{padding-right:48px}
+.danger{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:50px; margin-top:10px; border-radius:14px; border:1px solid color-mix(in srgb,#ff5d5d 45%, transparent); background:none; color:#ff6b6b; font-weight:700; cursor:pointer}
+.danger.armed{background:#ff5d5d; color:#fff; border-color:transparent}
+/* записи замірів */
+.mitem{display:flex; align-items:center; gap:10px; width:100%; min-height:50px; padding:8px 0; border:0; border-top:1px solid var(--line); background:none; text-align:left; cursor:pointer; font-variant-numeric:tabular-nums}
+.mitem:first-of-type{border-top:0}
+.mitem span:first-child{flex:1}
+.mitem .ic{color:var(--muted); width:18px; height:18px}
+.undo{margin-left:10px; min-height:34px; padding:0 12px; border-radius:10px; border:0; background:var(--accent); color:var(--accent-ink); font-weight:700; cursor:pointer}
