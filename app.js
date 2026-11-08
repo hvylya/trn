@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -59,8 +59,8 @@ const blank = () => ({ v:1, settings:{duration:90, restHeavy:150, restMain:120, 
 function load(){ S = Object.assign(blank(), person ? LS.get('trn:data:' + person, {}) : {}); S.settings = Object.assign(blank().settings, S.settings); if (!S.settings.durTouched) S.settings.duration = 90; }
 function save(){ if (person) LS.set('trn:data:' + person, S); }
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
-const THEMES = [['mocha','Catppuccin Mocha','#1e1e2e','#cba6f7'],['latte','Catppuccin Latte','#eff1f5','#8839ef'],['dawn','Rosé Pine Dawn','#faf4ed','#d7827e'],['nord','Nord','#2e3440','#88c0d0'],['gruvbox','Gruvbox','#282828','#fe8019'],['tokyo','Tokyo Night','#1a1b26','#7aa2f7']];
-const curTheme = () => { const t = LS.get('trn:theme', 'mocha'); return THEMES.some(x => x[0] === t) ? t : 'mocha'; };
+const THEMES = [['nord','Nord','#2e3440','#88c0d0'],['dawn','Rosé Pine Dawn','#faf4ed','#d7827e'],['forest','Everforest Light','#fdf6e3','#35a77c'],['kanagawa','Kanagawa','#1f1f28','#d27e99'],['gruvbox','Gruvbox','#282828','#fe8019'],['tokyo','Tokyo Night','#1a1b26','#7aa2f7']];
+const curTheme = () => { const t = LS.get('trn:theme', 'nord'); return THEMES.some(x => x[0] === t) ? t : 'nord'; };
 function applyTheme(){ const t = curTheme(); document.documentElement.dataset.theme = t; const th = THEMES.find(x => x[0] === t) || THEMES[0]; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = th[2]; }
 applyTheme();
 
@@ -321,7 +321,7 @@ function workoutScreen(){
   let rows = '';
   if (st.type === 'warm'){
     const d = it.sets[0] && it.sets[0].done;
-    rows = `<button class="warmcheck ${d ? 'done' : ''}" data-act="warm"><i>${d ? '✓' : ''}</i>${d ? 'Зроблено' : 'Позначити як зроблено'}</button>`;
+    rows = `${warmHint()}<button class="warmcheck ${d ? 'done' : ''}" data-act="warm"><i>${d ? '✓' : ''}</i>${d ? 'Зроблено' : 'Позначити як зроблено'}</button>`;
   } else {
     const hdr = `<div class="sethdr"><span>#</span><span>${st.type === 'weight' ? 'Вага, кг' : ''}</span><span>${st.unit === 'sec' ? 'Секунди' : st.unit === 'm' ? 'Метри' : 'Повтори'}${st.side ? '/бік' : ''}</span><span></span></div>`;
     rows = `<div class="sets">${hdr}${it.sets.map((s, i) => `<div class="set ${s.done ? 'done' : ''}"><span class="n">${i + 1}</span>
@@ -361,6 +361,15 @@ function workoutScreen(){
     <div class="wnav"><div>
       ${navButtons(st, isLast, nextIsExtra)}
     </div></div>`;
+}
+function warmHint(){
+  const A = S.active; const fid = A.queue.find(q => { const x = effStep(A.day, q); return x.kind === 'main' && x.type === 'weight'; });
+  if (!fid) return '';
+  const f = effStep(A.day, fid); const l = lastFor(f.en); const up = suggestUp(f, f.en);
+  let w = up != null ? up : l && l.it.sets[0] ? l.it.sets[0].w : null;
+  if (w != null && inDeload()) w = w * 0.75;
+  const half = w ? Math.max(f.step, Math.round(w * 0.5 / f.step) * f.step) : null;
+  return `<div class="last">Перша вправа: <b>${esc(f.en)}</b>.<br>${half ? `Розминковий підхід: <b>≈ ${fmt(half)} кг × 8</b> — половина від ${fmt(w)} кг.` : 'Розминковий підхід: ≈ половина робочої ваги × 8.'}</div>`;
 }
 function feelHtml(st, it){
   if (st.type !== 'weight' || st.kind === 'warm' || !it.sets.length || !it.sets.every(s => s.done)) return '';
@@ -403,7 +412,7 @@ function tick(){
       rest.hidden = false;
       rest.className = 'rest' + (rl <= 0 ? ' over' : '');
       rest.innerHTML = `<div>${rl > 0 ? `⏳ Відпочинок <b>${mmss(rl)}</b>` : '⏰ <b>Можна наступний підхід</b>'}<button data-act="rest30">+30 с</button><button data-act="restx" aria-label="Закрити">✕</button></div>`;
-      if (rl <= 0 && !A.restBeeped){ A.restBeeped = true; beep(); }
+      if (rl <= 0 && !A.restBeeped){ A.restBeeped = true; beep(); flash(); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch(e){} }
       if (rl < -45){ A.restEnd = null; rest.hidden = true; save(); }
     } else rest.hidden = true;
   }
@@ -416,6 +425,7 @@ function tick(){
 }
 setInterval(tick, 1000);
 
+function flash(){ const f = document.createElement('div'); f.className = 'flash'; document.body.appendChild(f); setTimeout(() => f.remove(), 2300); }
 function restFor(st){
   if (st.kind === 'core' || st.type === 'body') return S.settings.restCore;
   if (COMPOUND.has(st.en)) return st.min && st.min <= 8 ? S.settings.restHeavy : S.settings.restMain;
@@ -565,7 +575,15 @@ function histSheet(id){
     <p>${new Date(w.start).toTimeString().slice(0, 5)}–${new Date(w.end).toTimeString().slice(0, 5)} · ${w.sets} підходів · ${fmtInt(w.tonnage)} кг</p>
     ${w.note ? `<p>📝 ${esc(w.note)}</p>` : ''}
     <div>${w.items.map(it => `<div class="hex"><b>${esc(it.en)}</b>${it.alt ? ' <small class="muted">(заміна)</small>' : ''}<div class="s">${it.sets.map(s => it.type === 'weight' ? `${fmt(s.w)} кг × ${fmt(s.r)}` : s.r != null ? `${fmt(s.r)}${it.unit === 'sec' ? ' с' : it.unit === 'm' ? ' м' : ''}` : '✓').join(' · ')}</div></div>`).join('')}</div>
-    <div class="opts" style="margin-top:14px"><button data-act="delw" data-id="${w.id}">Видалити це тренування<small>Можна буде повернути одразу після видалення</small></button><button data-act="closesheet">Закрити</button></div>`);
+    <div class="opts" style="margin-top:14px"><button data-act="editw" data-id="${w.id}">Редагувати підходи<small>Виправити вагу чи повтори</small></button><button data-act="delw" data-id="${w.id}">Видалити це тренування<small>Можна буде повернути одразу після видалення</small></button><button data-act="closesheet">Закрити</button></div>`);
+}
+
+function editWorkoutSheet(id){
+  const w = S.workouts.find(x => x.id === id); if (!w) return;
+  openSheet(`<h2>Редагувати · ${dShort(w.start)}</h2><p>Зміни цифри й натисни «Зберегти».</p>
+    ${w.items.filter(it => it.type !== 'warm').map((it, ii) => { const wi = w.items.indexOf(it); return `<div class="hex"><b>${esc(it.en)}</b>
+      ${it.sets.map((x, si) => `<div class="erow"><span class="muted">${si + 1}</span>${it.type === 'weight' ? `<label><input inputmode="decimal" data-ew="${wi}:${si}:w" value="${x.w == null ? '' : fmt(x.w)}"> кг</label>` : ''}<label><input inputmode="decimal" data-ew="${wi}:${si}:r" value="${x.r == null ? '' : fmt(x.r)}"> ${it.unit === 'sec' ? 'с' : it.unit === 'm' ? 'м' : 'повт.'}</label></div>`).join('')}</div>`; }).join('')}
+    <button class="big" style="margin-top:14px" data-act="saveew" data-id="${w.id}">Зберегти</button>`);
 }
 
 /* ---------- прогрес ---------- */
@@ -731,7 +749,8 @@ function settingsSheet(){
       <button data-act="newblock">🔁 Почати новий блок<small>Лічильник тижнів почнеться з сьогодні</small></button>
       <button data-act="switchp">👤 Змінити людину<small>Зараз: ${esc(who())}. Дані кожної зберігаються окремо</small></button>
     </div>
-    <p class="muted small" style="margin-top:14px">Версія ${APP_VERSION} · програма від ${esc(P.version)}</p>
+    <p class="muted small" style="margin-top:14px">Порада: якщо екран гасне посеред тренування — Параметри iPhone → «Екран і яскравість» → «Автоблокування» → довше.</p>
+    <p class="muted small" style="margin-top:8px">Версія ${APP_VERSION} · програма від ${esc(P.version)}</p>
     <button class="big" style="margin-top:12px" data-act="closesheet">Готово</button>
     <input type="file" id="restorefile" accept="application/json,.json" hidden>`);
 }
@@ -832,6 +851,10 @@ document.addEventListener('click', e => {
       const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone, ach: Object.assign({}, S.ach)}; recheckAch(); save(); closeSheet(); render();
       toast(`Запис видалено <button class="undo" data-act="undo">Повернути</button>`, '', 6000); break; }
     case 'undo': if (undoBuf){ if (undoBuf.kind === 'm') S.measurements.push(undoBuf.item); if (undoBuf.kind === 'w'){ S.workouts.push(undoBuf.item); S.workouts.sort((a, b) => a.start - b.start); } if (undoBuf.ach) S.ach = undoBuf.ach; undoBuf = null; save(); render(); toast('Повернуто ✓'); } break;
+    case 'editw': editWorkoutSheet(d.id); break;
+    case 'saveew': { const w = S.workouts.find(x => x.id === d.id); if (!w) break;
+      sheetEl.querySelectorAll('[data-ew]').forEach(inp => { const [wi, si, f] = inp.dataset.ew.split(':'); const it = w.items[+wi]; if (it && it.sets[+si]) it.sets[+si][f] = num(inp.value); });
+      w.tonnage = tonnageOf(w.items); recheckAch(); checkAch(); save(); closeSheet(); render(); toast('Тренування оновлено ✓'); break; }
     case 'minimize': closeSheet(); releaseWake(); selDay = null; go('today'); break;
     case 'resume': startWorkout(S.active.day); break;
     case 'backup': backup(); break;

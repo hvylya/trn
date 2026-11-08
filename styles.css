@@ -1,12 +1,12 @@
 :root{
-  --bg:#181825; --surface:#1e1e2e; --surface2:#313244; --line:#45475a; --ink:#cdd6f4; --muted:#a6adc8;
-  --accent:#cba6f7; --accent-ink:#1e1e2e; --accent-soft:#5d4f78; --ok:#a6e3a1; --warn:#f9e2af;
-  --body:#313244; --m0:#45475a; --r:16px;
+  --bg:#2e3440; --surface:#3b4252; --surface2:#434c5e; --line:#4c566a; --ink:#eceff4; --muted:#b2bccc;
+  --accent:#88c0d0; --accent-ink:#2e3440; --accent-soft:#4f6f7f; --ok:#a3be8c; --warn:#ebcb8b;
+  --body:#434c5e; --m0:#4c566a; --r:16px;
   --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
   color-scheme:dark;
 }
-html[data-theme="mocha"]{--bg:#181825; --surface:#1e1e2e; --surface2:#313244; --line:#45475a; --ink:#cdd6f4; --muted:#a6adc8; --accent:#cba6f7; --accent-ink:#1e1e2e; --accent-soft:#5d4f78; --ok:#a6e3a1; --warn:#f9e2af; --body:#313244; --m0:#45475a}
-html[data-theme="latte"]{--bg:#e6e9ef; --surface:#eff1f5; --surface2:#dce0e8; --line:#ccd0da; --ink:#4c4f69; --muted:#6c6f85; --accent:#8839ef; --accent-ink:#ffffff; --accent-soft:#cbb2f4; --ok:#40a02b; --warn:#df8e1d; --body:#dce0e8; --m0:#bcc0cc; color-scheme:light}
+html[data-theme="forest"]{--bg:#f4f0d9; --surface:#fdf6e3; --surface2:#efebd4; --line:#e0dcc7; --ink:#4f5b62; --muted:#6f7d73; --accent:#35a77c; --accent-ink:#ffffff; --accent-soft:#b7dcc9; --ok:#8da101; --warn:#dfa000; --body:#e6e2cc; --m0:#d6d2bc; color-scheme:light}
+html[data-theme="kanagawa"]{--bg:#16161d; --surface:#1f1f28; --surface2:#2a2a37; --line:#363646; --ink:#dcd7ba; --muted:#a6a69c; --accent:#d27e99; --accent-ink:#16161d; --accent-soft:#6a3f4d; --ok:#98bb6c; --warn:#e6c384; --body:#2a2a37; --m0:#363646}
 html[data-theme="dawn"]{--bg:#faf4ed; --surface:#fffaf3; --surface2:#f2e9e1; --line:#dfdad9; --ink:#575279; --muted:#797593; --accent:#d7827e; --accent-ink:#ffffff; --accent-soft:#efc5c2; --ok:#286983; --warn:#ea9d34; --body:#f2e9e1; --m0:#dfdad9; color-scheme:light}
 html[data-theme="nord"]{--bg:#2e3440; --surface:#3b4252; --surface2:#434c5e; --line:#4c566a; --ink:#eceff4; --muted:#b2bccc; --accent:#88c0d0; --accent-ink:#2e3440; --accent-soft:#4f6f7f; --ok:#a3be8c; --warn:#ebcb8b; --body:#434c5e; --m0:#4c566a}
 html[data-theme="gruvbox"]{--bg:#1d2021; --surface:#282828; --surface2:#3c3836; --line:#504945; --ink:#ebdbb2; --muted:#a89984; --accent:#fe8019; --accent-ink:#1d2021; --accent-soft:#7c4a22; --ok:#b8bb26; --warn:#fabd2f; --body:#3c3836; --m0:#504945}
@@ -31,7 +31,7 @@ h1,h2,h3,h4,h5,p{margin:0}
 .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px; margin-bottom:12px}
 .card h2{font-size:18px; font-weight:700}
 .card h3{font-size:16px; font-weight:600; margin-bottom:8px}
-.big{display:block; width:100%; min-height:58px; border:0; border-radius:14px; background:var(--accent); color:var(--accent-ink); font-size:18px; font-weight:800; letter-spacing:.02em; cursor:pointer}
+.big{display:block; width:100%; min-height:50px; border:0; border-radius:14px; background:var(--accent); color:var(--accent-ink); font-size:16px; font-weight:800; letter-spacing:.02em; cursor:pointer}
 .big.ghost{background:transparent; color:var(--ink); border:1px solid var(--line); font-weight:600}
 .btn{min-height:44px; padding:0 14px; border-radius:12px; border:1px solid var(--line); background:var(--surface2); cursor:pointer; font-weight:600}
 .btn.acc{background:var(--accent); color:var(--accent-ink); border-color:transparent}
@@ -269,3 +269,9 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 .mitem span:first-child{flex:1}
 .mitem .ic{color:var(--muted); width:18px; height:18px}
 .undo{margin-left:10px; min-height:34px; padding:0 12px; border-radius:10px; border:0; background:var(--accent); color:var(--accent-ink); font-weight:700; cursor:pointer}
+
+.flash{position:fixed; inset:0; z-index:80; pointer-events:none; background:var(--accent); animation:flash .75s ease-in-out 3}
+@keyframes flash{0%,100%{opacity:0}40%{opacity:.55}}
+.erow{display:flex; align-items:center; gap:10px; margin-top:6px}
+.erow label{display:flex; align-items:center; gap:6px; color:var(--muted); font-size:14px}
+.erow input{width:84px; font:inherit; font-size:16px; color:var(--ink); background:var(--surface2); border:1px solid var(--line); border-radius:10px; padding:8px 10px; text-align:center}
