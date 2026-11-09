@@ -9,7 +9,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Зал">
-<link rel="manifest" href="manifest.webmanifest">
+<script>
+/* персональний маніфест: іконка на головному екрані відкриває потрібну людину */
+(function(){ var u = null; try { u = new URLSearchParams(location.search).get('u') || JSON.parse(localStorage.getItem('trn:person')); } catch(e){}
+  var l = document.createElement('link'); l.rel = 'manifest'; l.href = /^p[0-9]$/.test(u || '') ? 'manifest-' + u + '.webmanifest' : 'manifest.webmanifest'; document.head.appendChild(l); })();
+</script>
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="styles.css">

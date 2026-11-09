@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.11.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -86,7 +86,8 @@ const LS = {
   get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ toast('Не вдалося зберегти дані'); return false; } }
 };
-let person = LS.get('trn:person', null);
+/* людина: з персонального посилання ?u=p3 (запамʼятовується), інакше — збережена раніше */
+let person = (() => { try { const u = new URLSearchParams(location.search).get('u'); if (u && P.people[u]){ LS.set('trn:person', u); return u; } } catch(e){} return LS.get('trn:person', null); })();
 let S = null;
 const blank = () => ({ v:1, settings:{duration:90, restHeavy:150, restMain:120, restIso:90, restCore:45, fun:"normal"}, blockStart:null, blockLen:8, mnotes:{}, home:{}, deloadUntil:null, deloadSnooze:null, cpSeen:{}, workouts:[], active:null, measurements:[], ach:{}, lastBackup:null });
 function load(){ S = Object.assign(blank(), person ? LS.get('trn:data:' + person, {}) : {}); S.settings = Object.assign(blank().settings, S.settings); if (!S.settings.durTouched) S.settings.duration = 90; }
@@ -702,6 +703,12 @@ function dayPlanSheet(day){
   const sec = (k, t) => { const l = st.filter(s => s.kind === k); return l.length ? `<div class="qsec">${t}</div><ul class="qlist">${l.map(s => `<li><button data-act="planex" data-day="${day}" data-id="${s.id}"><span class="qn">${esc(nm(s.en))}<small>${esc(s.dose)}</small></span><span class="st">›</span></button></li>`).join('')}</ul>` : ''; };
   openSheet(`<h2>${DAY_NAME[day]}</h2>${sec('warm','Розминка')}${sec('main','Силова')}${sec('core','Кор')}${sec('extra','Якщо є час')}`);
 }
+function techSheet(en){
+  const L = lib(en);
+  openSheet(`<h2>${esc(nm(en))}</h2><p><span class="muted" lang="en">${esc(enm(en))}</span></p>
+    ${L.video ? `<p><a class="btn" style="text-decoration:none" href="${esc(L.video)}" target="_blank" rel="noopener">${ic('video')} Відео</a></p>` : ''}
+    ${techHtml(en) || '<p>Техніки для цієї вправи немає.</p>'}`);
+}
 function exSheet(day, id){
   const s = stepById(day, id), L = lib(s.en);
   openSheet(`<h2>${esc(nm(s.en))}</h2><p><span class="muted" lang="en">${esc(enm(s.en))}</span>${L.mach ? `<br><i>${esc(L.mach)}</i>` : ''}<br>План: <b>${esc(s.dose)}</b>${s.note ? `<br>${esc(s.note)}` : ''}</p>
@@ -792,7 +799,7 @@ const HOME = {
        {id:'calf', icon:'stairs', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'}],
   p2: [{id:'calf', icon:'stairs', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'},
        {id:'balance', icon:'oneleg', title:'Баланс', desc:'Поки чистиш зуби, стій на одній нозі: по 30 с на кожну, двічі. Коліно мʼяке, погляд прямо, раковина поруч. Хитаєшся — так і має бути, саме це й тренує гомілкостоп.', per:5, freq:'5 днів на тиждень'}],
-  p3: [{id:'core', icon:'plank', title:'Кор-сет на 10 хвилин', desc:'Місця — як для килимка.\n1. Планка на ліктях: 3 × 20–40 с, сідниці й живіт напружені, поперек не провисає.\n2. Мертвий жук: 2 × 8 на кожну сторону, поперек притиснутий до підлоги, видих — коли опускаєш.\n3. Бокова планка: 2 × 20–30 с на кожен бік, таз угорі. Легше — з колінами на підлозі.\nВідпочинок між підходами 30 с.', per:3, freq:'3 рази на тиждень'}]
+  p3: [{id:'core', icon:'bug', title:'Кор на 7 хвилин', tech:['Dead bug','Bird dog'], desc:'Місця — як для килимка.\n1. Мертвий жук: 3 × 8 на кожну сторону. Поперек притиснутий до підлоги, видих — коли опускаєш.\n2. Птах-пес: 3 × 6 на кожну сторону, затримка 2 с. Корпус нерухомий, таз не повертається.\nВідпочинок між підходами 30 с. Обидві вправи потім увійдуть у твою програму.', per:3, freq:'3 рази на тиждень'}]
 };
 const homeDone = (d, id) => (S.home[d] || []).includes(id);
 function homeCount(id){ return Object.values(S.home).filter(a => a.includes(id)).length; }
@@ -805,6 +812,7 @@ function homeScreen(){
     ${HOME[person].map(h => { const done = homeDone(today, h.id); const wk = days.filter(d => homeDone(d.k, h.id)).length;
       return `<div class="card"><div class="row"><span class="hicon">${ic(h.icon)}</span><div class="grow"><h2>${h.title}</h2><p class="muted small">${h.freq} · цього тижня ${wk} з ${h.per}</p></div></div>
         <p style="margin:10px 0 12px; white-space:pre-line">${esc(h.desc)}</p>
+        ${h.tech ? `<div class="row wrap" style="gap:8px; margin:-2px 0 12px">${h.tech.map(en => `<button class="btn" data-tech="${esc(en)}">${ic('book')} ${esc(nm(en))}</button>`).join('')}</div>` : ''}
         <button class="warmcheck ${done ? 'done' : ''}" data-home="${h.id}"><i>${done ? '✓' : ''}</i>${done ? 'Сьогодні зроблено' : 'Зробила сьогодні'}</button>
         <div class="hweek">${days.map(d => `<span class="${homeDone(d.k, h.id) ? 'h' : ''} ${d.t ? 't' : ''}">${d.l}</span>`).join('')}</div>
         ${h.per === 7 ? `<p class="muted small" style="margin-top:8px">Днів поспіль: ${homeStreak(h.id)}</p>` : ''}</div>`; }).join('')}
@@ -1015,7 +1023,7 @@ function settingsSheet(){
       <button data-act="backup">${ic('save')} Зберегти резервну копію<small>${S.lastBackup ? 'Остання: ' + dShort(S.lastBackup) : 'Ще не було'}</small></button>
       <button data-act="restore">${ic('folder')} Відновити з копії<small>Замінить поточні дані</small></button>
       <button data-act="newblock">${ic('repeat')} Почати новий блок<small>Лічильник тижнів почнеться з сьогодні</small></button>
-      <button data-act="switchp">${ic('user')} Змінити людину<small>Зараз: ${esc(who())}. Дані кожної зберігаються окремо</small></button>
+      
     </div>
     <p class="muted small" style="margin-top:14px">Порада: якщо екран гасне посеред тренування — Параметри iPhone → «Екран і яскравість» → «Автоблокування» → довше.</p>
     <p class="muted small" style="margin-top:8px">Версія ${APP_VERSION} · програма від ${esc(P.version)}</p>
@@ -1060,6 +1068,7 @@ function render(){
 document.addEventListener('click', e => {
   const t = e.target.closest('button, [data-hist]'); if (!t) return;
   const d = t.dataset;
+  if (d.tech){ techSheet(d.tech); return; }
   if (d.person){ person = d.person; LS.set('trn:person', person); load(); go('today'); return; }
   if (d.go){ closeSheet(); go(d.go); return; }
   if (d.day && !d.act){ selDay = d.day; render(); return; }
