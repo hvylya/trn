@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.1';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -855,15 +855,30 @@ function strengthTrend(group, from, to){
   });
   return r.length ? r.reduce((a, x) => a + x, 0) / r.length : null;
 }
+/* підозріло велика зміна від попереднього заміру — скоріше помилка стрічки, коми чи ваг */
+const SUS = {weight: [2.5, 'кг', 'Вага'], waist: [3, 'см', 'Талія'], hips: [3, 'см', 'Стегна'], chest: [3.5, 'см', 'Груди'], thigh: [2, 'см', 'Стегно'], biceps: [1.5, 'см', 'Біцепс']};
+function mSuspicious(){
+  const M = [...S.measurements].sort((a, b) => a.date.localeCompare(b.date)), n = M.length; if (n < 2) return [];
+  const last = M[n - 1], out = [];
+  Object.entries(SUS).forEach(([k, [lim, u, l]]) => {
+    if (last[k] == null) return; let j = n - 2; while (j >= 0 && M[j][k] == null) j--; if (j < 0) return;
+    const wk = Math.max(1, (new Date(last.date) - new Date(M[j].date)) / 6048e5), d = last[k] - M[j][k];
+    if (Math.abs(d) >= lim * (1 + .3 * (Math.min(wk, 4) - 1))) out.push({k, l, u, d});
+  });
+  return out;
+}
 function mInsight(){
   const M = [...S.measurements].sort((a, b) => a.date.localeCompare(b.date)); const n = M.length; if (!n) return null;
+  const sus = mSuspicious().map(x => x.k);
+  if (sus.length){ const c = Object.assign({}, M[n - 1]); sus.forEach(k => { delete c[k]; }); M[n - 1] = c; }   // помилку не аналізуємо
   const last = M[n - 1], seed = last.date + person, goal = GOALS[person] || 'keep';
   if (n === 1) return {t: 'first', tom: 'first', h: 'Точка відліку є', p: 'Наступного тижня Томек уже порівнюватиме.'};
   const avg = (arr, k) => { const v = arr.map(m => m[k]).filter(x => x != null); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null; };
   const prev = M.slice(Math.max(0, n - 3), n - 1);           // до двох попередніх
   const D = {}, T = {}, F = {};
   ['weight','chest','biceps','waist','hips','thigh'].forEach(k => {
-    const p = avg(prev, k); D[k] = last[k] != null && p != null ? last[k] - p : 0;
+    if (last[k] == null){ D[k] = T[k] = NaN; F[k] = 0; return; }   // немає заміру — нічого про нього не стверджуємо
+    const p = avg(prev, k); D[k] = p != null ? last[k] - p : 0;
     const w = M.slice(Math.max(0, n - 4)), h = Math.floor(w.length / 2), a = avg(w.slice(0, h), k), b = avg(w.slice(h), k); T[k] = n >= 3 && a != null && b != null ? b - a : D[k];
     const f = M.find(m => m[k] != null); F[k] = f && last[k] != null && f !== last ? last[k] - f[k] : 0;
   });
@@ -878,7 +893,11 @@ function mInsight(){
   const upper = Math.max(T.chest || 0, T.biceps || 0);
   let r;
   if (goal === 'gain'){
-    if (legs >= CM && T.waist <= .25) r = {t: 'good', tom: 'proud', h: seedPick([`${fmtD(legs, 'см')} у ${legK}, талія на місці`, `Ноги ростуть, талія тримається`], seed), p: legUp ? 'І сила в ногах росте. Томек підтверджує: це мʼязи.' : 'Саме так виглядає набір мʼязів.'};
+    if (legs >= CM && T.waist <= -CM) r = {t: 'good', tom: 'proud', h: `Ноги ${fmtD(legs, 'см')}, талія ${fmtD(T.waist, 'см')}`, p: 'Ноги ростуть, талія меншає. Рекомпозиція мрії.'};
+    else if (T.waist <= -CM && (T.weight <= -KG || D.weight <= -KG)) r = {t: 'ok', tom: 'shake', h: `Талія ${fmtD(T.waist, 'см')}`, p: 'Підсушуєшся — гарно. Але вага теж іде, тож не забувай їсти: мʼязам потрібне будівельне.'};
+    else if (T.waist <= -CM && Math.abs(legs) < CM) r = {t: 'good', tom: 'smug', h: `Талія ${fmtD(T.waist, 'см')}`, p: 'Підсушуєшся при тій самій вазі. Стрункішає талія — виразніші ноги.'};
+    else if (legs >= CM && isNaN(T.waist)) r = {t: 'good', tom: 'smug', h: `${fmtD(legs, 'см')} у ${legK}`, p: 'Ноги ростуть. Талію цього разу не враховано.'};
+    else if (legs >= CM && T.waist <= .25) r = {t: 'good', tom: 'proud', h: seedPick([`${fmtD(legs, 'см')} у ${legK}, талія на місці`, `Ноги ростуть, талія тримається`], seed), p: legUp ? 'І сила в ногах росте. Томек підтверджує: це мʼязи.' : 'Саме так виглядає набір мʼязів.'};
     else if (legs >= CM && T.waist <= legs * .5) r = {t: 'good', tom: 'smug', h: `${fmtD(legs, 'см')} у ${legK}`, p: 'Талія трохи підросла, але повільніше за ноги. Нормальний набір.'};
     else if (legs > 0 && T.waist >= CM && T.waist >= legs) r = legUp ? {t: 'meh', tom: 'loaf', h: 'Росте все, разом із талією', p: 'Сила росте, тож частина — мʼязи. Але темп трохи завеликий.'}
       : {t: 'meh', tom: 'inspector', h: 'Росте все, разом із талією', p: 'Схоже, з будівельним матеріалом перебір. Томек пропонує трохи менше літерки «В».'};
@@ -886,7 +905,7 @@ function mInsight(){
     else if (legs <= -CM * 2 || badW('weight', -1, KG)) r = {t: 'meh', tom: 'shake', h: 'Мінус у вазі', p: 'Мʼязам потрібне будівельне. Томек радить перекус — і шейк.'};
     else if (D.weight >= KG && D.waist < CM) r = {t: 'good', tom: 'smug', h: `${fmtD(D.weight, 'кг')} без талії`, p: 'Набір у правильний бік.'};
   } else if (goal === 'loss'){
-    if (T.weight <= -KG && T.waist <= -CM) r = {t: 'good', tom: 'proud', h: `${fmtD(T.waist, 'см')} у талії і ${fmtD(T.weight, 'кг')}`, p: 'Ідеальний тиждень. Томек шукає тобі пасок на дірочку менший.'};
+    if (T.weight <= -KG && T.waist <= -CM) r = {t: 'good', tom: 'proud', h: `${fmtD(T.waist, 'см')} у талії і ${fmtD(T.weight, 'кг')}`, p: 'Ідеально. Томек шукає тобі пасок на дірочку менший.'};
     else if (Math.abs(T.weight) < KG && T.waist <= -CM) r = {t: 'good', tom: 'proud', h: `Вага та сама, а талія ${fmtD(T.waist, 'см')}`, p: 'Жир іде, мʼязи приходять. Найкраща новина.'};
     else if (D.waist <= -CM) r = {t: 'good', tom: 'smug', h: `${fmtD(D.waist, 'см')} у талії`, p: seedPick(['Мінус сантиметр — це вже видно в дзеркалі.','Сантиметр за сантиметром. Томек аплодує.'], seed)};
     else if (D.weight <= -KG) r = {t: 'good', tom: 'smug', h: `${fmtD(D.weight, 'кг')}`, p: seedPick(['Пів кіло — як пачка масла. Тільки краще: її більше немає.','Стрілка вагів рушила. Так тримати.'], seed)};
@@ -897,7 +916,7 @@ function mInsight(){
     if (upper >= CM && T.waist <= .25) r = {t: 'good', tom: 'proud', h: `${fmtD(upper, 'см')} у ${(T.biceps || 0) >= (T.chest || 0) ? 'біцепсі' : 'грудях'}`, p: upUp ? 'Верх росте, талія на місці, сила теж. Класика рекомпозиції.' : 'Верх росте, талія на місці. Класика рекомпозиції.'};
     else if (upper >= CM && badW('waist', 1, CM)) r = {t: 'meh', tom: 'inspector', h: 'Росте все, разом із талією', p: 'Трохи стежимо за літеркою «В».'};
     else if (T.waist <= -CM && Math.abs(T.weight) < KG * 2) r = {t: 'good', tom: 'smug', h: `${fmtD(T.waist, 'см')} у талії`, p: 'Підсушуєшся при тій самій вазі. Чудово.'};
-    else if (D.biceps >= CM || D.chest >= CM) r = {t: 'good', tom: 'smug', h: `${fmtD(Math.max(D.biceps, D.chest), 'см')} у ${D.biceps >= D.chest ? 'біцепсі' : 'грудях'}`, p: 'Плечі й спина працюють не дарма.'};
+    else if (D.biceps >= CM || D.chest >= CM) r = {t: 'good', tom: 'smug', h: `${fmtD(Math.max(D.biceps || 0, D.chest || 0), 'см')} у ${(D.biceps || 0) >= (D.chest || 0) ? 'біцепсі' : 'грудях'}`, p: 'Плечі й спина працюють не дарма.'};
     else if (badW('waist', 1, CM)) r = {t: 'meh', tom: 'inspector', h: 'Талія підросла', p: 'Два заміри поспіль. Трохи стежимо за літеркою «В».'};
   }
   if (!r) r = {t: 'ok', tom: 'loaf', h: seedPick(['Стабільно','Тримаєш форму','Без різких рухів'], seed), p: 'Коливання до 0,5 — це вода й сніданок. Дивись на тенденцію за 3–4 тижні.'};
@@ -911,7 +930,9 @@ function mInsight(){
 const mDir = k => ({gain: {weight: 1, thigh: 1, hips: 1, waist: -1}, keep: {chest: 1, biceps: 1, waist: -1}, loss: {weight: -1, waist: -1, hips: -1, thigh: -1, chest: -1}}[GOALS[person] || 'keep'][k] || 0);
 function mInsightCard(){
   const r = mInsight(); if (!r) return '';
-  return `<div class="minsight ${r.t}">${tom(r.tom, 'tomins')}<div><b>${esc(r.h)}</b><p>${esc(r.p)}</p>${r.start ? `<small>${esc(r.start)}</small>` : ''}</div></div>`;
+  const sus = mSuspicious(), M = [...S.measurements].sort((a, b) => a.date.localeCompare(b.date)), ld = M.length ? M[M.length - 1].date : '';
+  const warn = sus.length ? `<div class="minsight meh">${tom('inspector', 'tomins')}<div><b>Інспектор просить перевірити</b><p>${sus.map(x => `${x.l} ${fmtD(x.d, x.u)}`).join(', ')} — за такий час так не буває. Схоже на помилку стрічки, коми чи ваг. Поки цей замір не враховується.</p><button class="btn" style="margin-top:8px" data-act="editm" data-date="${ld}">${ic('pencil')} Змінити</button></div></div>` : '';
+  return warn + `<div class="minsight ${r.t}">${tom(r.tom, 'tomins')}<div><b>${esc(r.h)}</b><p>${esc(r.p)}</p>${r.start ? `<small>${esc(r.start)}</small>` : ''}</div></div>`;
 }
 
 /* ---------- заміри ---------- */
