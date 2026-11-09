@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -45,6 +45,35 @@ const IP = {
   plus:'<path d="M12 5v14M5 12h14"/>',
   play:'<path d="M8 5.5v13l10.5-6.5z"/>',
   gear:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  flame:'<path d="M12 21a6 6 0 0 0 6-6c0-4.5-3.5-6.5-4.5-11-1.2 2.4-2 3.8-2 5.8-1.2-.9-2-2.2-2.2-3.8C7 8.6 6 11.6 6 15a6 6 0 0 0 6 6z"/>',
+  snow:'<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5 12 7l2.5-2.5M9.5 19.5 12 17l2.5 2.5"/>',
+  feather:'<path d="M12.7 19a2 2 0 0 0 1.4-.6l6.2-6.2a6 6 0 0 0-8.5-8.5L5.6 9.9A2 2 0 0 0 5 11.3V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22M17.5 15H9"/>',
+  grad:'<path d="M21.4 10.9a1 1 0 0 0 0-1.8l-8.6-3.9a2 2 0 0 0-1.7 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.7 0z"/><path d="M22 10v6M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>',
+  save:'<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7M7 3v4a1 1 0 0 0 1 1h7"/>',
+  folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/>',
+  repeat:'<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M8 16H3v5"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  trophy:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17c0 .6-.5 1-1 1.2C7.9 18.8 7 20.2 7 22M14 14.7V17c0 .6.5 1 1 1.2 1.1.6 2 2 2 3.8"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/>',
+  medal:'<circle cx="12" cy="15" r="6"/><path d="M8.5 10 6 3h4l2 4 2-4h4l-2.5 7"/><path d="M12 13v4"/>',
+  star:'<path d="M12 2.8l2.8 5.8 6.4.9-4.6 4.5 1.1 6.4L12 17.4l-5.7 3 1.1-6.4-4.6-4.5 6.4-.9z"/>',
+  stars:'<path d="M9.5 3l1.6 4.4L15.5 9l-4.4 1.6L9.5 15l-1.6-4.4L3.5 9l4.4-1.6zM18 13l.9 2.1L21 16l-2.1.9L18 19l-.9-2.1L15 16l2.1-.9z"/>',
+  bottle:'<path d="M9.5 2h5v3l2 3.5V20a2 2 0 0 1-2 2h-5a2 2 0 0 1-2-2V8.5l2-3.5z"/><path d="M7.5 12h9"/>',
+  kettle:'<path d="M9 9V7a3 3 0 0 1 6 0v2"/><circle cx="12" cy="15" r="6"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  alert:'<path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  flag:'<path d="M5 21V4M5 4h12l-2.5 4L17 12H5"/>',
+  calok:'<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 15l2 2 4-4"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>',
+  smile:'<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5q3.5 3 7 0M9 9.5h.01M15 9.5h.01"/>',
+  meh:'<circle cx="12" cy="12" r="9"/><path d="M9 15h6M9 9.5h.01M15 9.5h.01"/>',
+  tired:'<circle cx="12" cy="12" r="9"/><path d="M8.5 16q3.5-2.5 7 0M8 9l2.2 1.2M16 9l-2.2 1.2"/>',
+  flex:'<path d="M12.4 13A5 5 0 0 1 22 15c0 3.9-4 7-9 7-4.1 0-8.2-.8-10.4-2.5-.4-.3-.6-.8-.6-1.4C2.1 12.7 2.6 2 10 2a3 3 0 0 1 3 3 2 2 0 0 1-2 2c-1.1 0-1.6-.4-2-1"/><path d="M15 14a5 5 0 0 0-7.6 2M10 6.8C8 8 9.5 13 8 15"/>',
+  head:'<circle cx="12" cy="8" r="4.5"/><path d="M10 12.5V16M14 12.5V16M5 21q7-6 14 0"/>',
+  stairs:'<path d="M3 20h5v-5h5v-5h5V5h3"/>',
+  oneleg:'<circle cx="12" cy="4.5" r="2"/><path d="M12 7v7M12 14v7M12 14l4.5-1.5-1 4M7.5 10.5h9"/>',
+  ring:'<circle cx="12" cy="12" r="7.5"/>',
+  half:'<circle cx="12" cy="12" r="7.5"/><path d="M12 4.5a7.5 7.5 0 0 1 0 15z" fill="currentColor"/>',
+  dot:'<circle cx="12" cy="12" r="7.5" fill="currentColor"/><path d="M8.5 12.3l2.4 2.4 4.6-4.9" stroke="var(--bg)"/>',
   timer:'<circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.5 2M9.5 2.5h5"/>'
 };
 const gear = () => `<button class="iconbtn" data-act="settings" aria-label="Налаштування">${ic('gear')}</button>`;
@@ -63,8 +92,39 @@ function save(){ if (person) LS.set('trn:data:' + person, S); }
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
 const THEMES = [['nord','Nord','#2e3440','#88c0d0'],['dawn','Rosé Pine Dawn','#faf4ed','#d7827e'],['forest','Everforest Light','#fdf6e3','#35a77c'],['kanagawa','Kanagawa','#1f1f28','#d27e99'],['gruvbox','Gruvbox','#282828','#fe8019'],['tokyo','Tokyo Night','#1a1b26','#7aa2f7']];
 const curTheme = () => { const t = LS.get('trn:theme', 'nord'); return THEMES.some(x => x[0] === t) ? t : 'nord'; };
-function applyTheme(){ const t = curTheme(); document.documentElement.dataset.theme = t; const th = THEMES.find(x => x[0] === t) || THEMES[0]; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = th[2]; }
+function applyTheme(){ const t = curTheme(); document.documentElement.dataset.theme = t; const th = THEMES.find(x => x[0] === t) || THEMES[0]; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = th[2]; try { tintToms(); } catch(e){} }
 applyTheme();
+
+/* ---------- Томек: сірі наліпки, перефарбовані під кольори теми ---------- */
+const TOM = ['logo','ogo','smug','shake','inspector','proud','sleep','back','shy','loaf','first'];
+const tomCache = {};
+const tomUrl = n => tomCache[curTheme() + ':' + n] || `img/tomek/${n}.png`;
+const tom = (n, cls) => `<img class="tom ${cls || ''}" data-t="${n}" src="${tomUrl(n)}" alt="" aria-hidden="true">`;
+function tomStops(){
+  const cs = getComputedStyle(document.documentElement), hx = v => { v = v.trim(); return [1, 3, 5].map(i => parseInt(v.slice(i, i + 2), 16) / 255); };
+  const lum = c => .2126 * c[0] + .7152 * c[1] + .0722 * c[2], mix = (a, b, t) => a.map((x, i) => x * (1 - t) + b[i] * t);
+  const a = hx(cs.getPropertyValue('--bg') || '#2e3440'), b = hx(cs.getPropertyValue('--ink') || '#eceff4'), acc = hx(cs.getPropertyValue('--accent') || '#88c0d0');
+  const dark = lum(a) < lum(b) ? a : b, light = lum(a) < lum(b) ? b : a;
+  const paper = mix(light, [1, 1, .97], .25), ink = mix(dark, [0, 0, 0], .25);
+  return [ink, mix(mix(ink, paper, .5), acc, .22), mix(mix(ink, paper, .78), acc, .12), paper];
+}
+function tintToms(){
+  const t = curTheme(), st = tomStops(), lut = new Uint8ClampedArray(256 * 3);
+  for (let v = 0; v < 256; v++){ const x = v / 255 * 3, i = Math.min(2, Math.floor(x)), f = x - i; for (let k = 0; k < 3; k++) lut[v * 3 + k] = 255 * (st[i][k] * (1 - f) + st[i + 1][k] * f); }
+  TOM.forEach(n => {
+    if (tomCache[t + ':' + n]) return;
+    const im = new Image();
+    im.onload = () => { try {
+      const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext('2d');
+      x.drawImage(im, 0, 0); const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+      for (let j = 0; j < p.length; j += 4){ const v = p[j]; p[j] = lut[v * 3]; p[j + 1] = lut[v * 3 + 1]; p[j + 2] = lut[v * 3 + 2]; }
+      x.putImageData(d, 0, 0); tomCache[t + ':' + n] = c.toDataURL('image/png');
+      if (curTheme() === t) document.querySelectorAll(`img.tom[data-t="${n}"]`).forEach(i => { i.src = tomCache[t + ':' + n]; });
+    } catch(e){} };
+    im.src = `img/tomek/${n}.png`;
+  });
+}
+tintToms();
 
 /* ---------- програма ---------- */
 const plan = day => P.days.find(d => d.key === day)[person];
@@ -93,7 +153,7 @@ function hideToast(n){
 /* фраза з емодзі в кінці → емодзі окремо зліва (місце для котика) */
 const EMO = /\s*(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*)\s*$/u;
 function sayIco(ico, title, sub, cls){ toast(`${ico ? `<span class="tico">${ico}</span>` : ''}<span class="tt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</span>`, cls || 'fun'); }
-function say(text, cls, sub){ const m = text.match(EMO); sayIco(m ? m[1] : '', esc(m ? text.slice(0, m.index) : text), sub, cls); }
+function say(text, cls, sub, t){ const m = text.match(EMO); sayIco(t ? tom(t) : (m ? m[1] : ''), esc(m ? text.slice(0, m.index) : text), sub, cls); }
 toastEl.addEventListener('click', e => { if (!e.target.closest('button')) { clearTimeout(toast.t); hideToast(); } });
 (function(){ let x0 = null, y0 = 0, dx = 0, dy = 0;
   toastEl.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = dy = 0; }, {passive: true});
@@ -196,26 +256,26 @@ function tonnageOf(items){
 
 /* ---------- досягнення ---------- */
 const ACH = [
-  ['first','🎉','Перше тренування', s => s.workouts.length >= 1],
-  ['w10','🥉','10 тренувань', s => s.workouts.length >= 10],
-  ['w25','🥈','25 тренувань', s => s.workouts.length >= 25],
-  ['w50','🥇','50 тренувань', s => s.workouts.length >= 50],
-  ['w100','🏆','100 тренувань', s => s.workouts.length >= 100],
-  ['week','📅','Повний тиждень: 3 з 3', s => [...weekCounts().values()].some(v => v >= 3)],
-  ['month','🔥','Місяць без пропусків', s => streakWeeks() >= 4],
-  ['block','🎓','Блок завершено', s => s.blockStart && blockWeek() > blockLen() && s.workouts.filter(w => w.start >= s.blockStart).length >= 20],
-  ['pr1','⭐','Перший рекорд', s => s.workouts.some(w => (w.prs || []).length)],
-  ['pr10','🌟','10 рекордів', s => s.workouts.reduce((a, w) => a + (w.prs || []).length, 0) >= 10],
-  ['up10','📈','+10 разів додала вагу', s => s.workouts.reduce((a, w) => a + (w.ups || 0), 0) >= 10],
-  ['t5','🏋️','5 тонн за тренування', s => s.workouts.some(w => w.tonnage >= 5000)],
-  ['t100','💯','100 тонн загалом', s => s.workouts.reduce((a, w) => a + (w.tonnage || 0), 0) >= 100000],
-  ['extra','⏱️','Встигла «Якщо є час»', s => s.workouts.some(w => w.items.some(it => it.kind === 'extra' && it.sets.some(x => x.done)))],
-  ['shake','🥤','10 вечірніх шейків', s => s.workouts.filter(w => new Date(w.end).getHours() >= 16).length >= 10],
-  ['m1','📏','Перші заміри', s => s.measurements.length >= 1],
-  ['neck7','🦒','Шия 7 днів поспіль', s => homeStreak('neck') >= 7, 'p1'],
-  ['calf10','🦵','Ікри вдома 10 разів', s => homeCount('calf') >= 10],
-  ['bal10','🦩','Фламінго: баланс 10 разів', s => homeCount('balance') >= 10, 'p2'],
-  ['m4','📐','Заміри 4 тижні поспіль', s => { const ws = new Set(s.measurements.map(m => weekStart(new Date(m.date).getTime()))); let k = weekStart(Date.now()), n = 0; if (!ws.has(k)) k = weekStart(k - 3 * 864e5); while (ws.has(k)){ n++; k = weekStart(k - 3 * 864e5); } return n >= 4; }]
+  ['first','flag','Перше тренування', s => s.workouts.length >= 1],
+  ['w10','medal','10 тренувань', s => s.workouts.length >= 10],
+  ['w25','medal','25 тренувань', s => s.workouts.length >= 25],
+  ['w50','medal','50 тренувань', s => s.workouts.length >= 50],
+  ['w100','trophy','100 тренувань', s => s.workouts.length >= 100],
+  ['week','calok','Повний тиждень: 3 з 3', s => [...weekCounts().values()].some(v => v >= 3)],
+  ['month','flame','Місяць без пропусків', s => streakWeeks() >= 4],
+  ['block','grad','Блок завершено', s => s.blockStart && blockWeek() > blockLen() && s.workouts.filter(w => w.start >= s.blockStart).length >= 20],
+  ['pr1','star','Перший рекорд', s => s.workouts.some(w => (w.prs || []).length)],
+  ['pr10','stars','10 рекордів', s => s.workouts.reduce((a, w) => a + (w.prs || []).length, 0) >= 10],
+  ['up10','chart','+10 разів додала вагу', s => s.workouts.reduce((a, w) => a + (w.ups || 0), 0) >= 10],
+  ['t5','gym','5 тонн за тренування', s => s.workouts.some(w => w.tonnage >= 5000)],
+  ['t100','kettle','100 тонн загалом', s => s.workouts.reduce((a, w) => a + (w.tonnage || 0), 0) >= 100000],
+  ['extra','timer','Встигла «Якщо є час»', s => s.workouts.some(w => w.items.some(it => it.kind === 'extra' && it.sets.some(x => x.done)))],
+  ['shake','bottle','10 вечірніх шейків', s => s.workouts.filter(w => new Date(w.end).getHours() >= 16).length >= 10],
+  ['m1','ruler','Перші заміри', s => s.measurements.length >= 1],
+  ['neck7','head','Шия 7 днів поспіль', s => homeStreak('neck') >= 7, 'p1'],
+  ['calf10','stairs','Ікри вдома 10 разів', s => homeCount('calf') >= 10],
+  ['bal10','oneleg','Фламінго: баланс 10 разів', s => homeCount('balance') >= 10, 'p2'],
+  ['m4','calok','Заміри 4 тижні поспіль', s => { const ws = new Set(s.measurements.map(m => weekStart(new Date(m.date).getTime()))); let k = weekStart(Date.now()), n = 0; if (!ws.has(k)) k = weekStart(k - 3 * 864e5); while (ws.has(k)){ n++; k = weekStart(k - 3 * 864e5); } return n >= 4; }]
 ];
 const achList = () => ACH.filter(a => !a[4] || a[4] === person);
 /* після видалення: прибрати ачівки, умова яких більше не виконується */
@@ -226,7 +286,7 @@ const achById = id => ACH.find(a => a[0] === id);
 /* ---------- вибір людини ---------- */
 function chooseScreen(){
   return `<div class="choose">
-    <img class="logo" src="icons/icon-192.png" alt="">
+    ${tom('logo','tomchoose')}
     <h1>Хто тренується на цьому телефоні?</h1>
     <p class="muted">Кожна бачить свою програму й свій трекер. Дані зберігаються лише на цьому телефоні.</p>
     <button class="big" data-person="p1">${esc(P.people.p1)}</button>
@@ -246,14 +306,14 @@ function todayScreen(){
   const bw = blockWeek();
   const backupOld = S.workouts.length >= 3 && (!S.lastBackup || Date.now() - S.lastBackup > 30 * 864e5);
   const names = steps.filter(s => s.kind === 'main').map(s => s.en);
-  return `<div class="top"><h1>Привіт, ${esc(who())}</h1>${gear()}</div>
+  return `<div class="top">${tom('logo','tomhead')}<h1>Привіт, ${esc(who())}</h1>${gear()}</div>
     <div class="row wrap" style="margin-bottom:14px">
-      <span class="pill">${bw <= blockLen() ? `Тиждень ${bw} з ${blockLen()}` : 'Блок завершено 🎓'}</span>
-      <span class="pill">🔥 Серія: ${streak} ${streak === 1 ? 'тиждень' : streak >= 2 && streak <= 4 ? 'тижні' : 'тижнів'}${si.frozen ? ' · ❄️' : ''}</span>
-      ${inDeload() ? '<span class="pill">🪶 Легкий тиждень</span>' : ''}
+      <span class="pill">${bw <= blockLen() ? `Тиждень ${bw} з ${blockLen()}` : `${ic('grad')} Блок завершено`}</span>
+      <span class="pill">${ic('flame')} Серія: ${streak} ${streak === 1 ? 'тиждень' : streak >= 2 && streak <= 4 ? 'тижні' : 'тижнів'}${si.frozen ? ` · ${ic('snow')}` : ''}</span>
+      ${inDeload() ? `<span class="pill">${ic('feather')} Легкий тиждень</span>` : ''}
     </div>
     ${bannersHtml(bw)}
-    ${backupOld ? `<div class="banner">💾 <span class="grow">${S.lastBackup ? `Остання резервна копія ${Math.floor((Date.now() - S.lastBackup) / 864e5)} дн. тому` : 'Резервної копії ще немає'}</span><button class="btn" data-act="backup">Зберегти</button></div>` : ''}
+    ${backupOld ? `<div class="banner">${ic('save')} <span class="grow">${S.lastBackup ? `Остання резервна копія ${Math.floor((Date.now() - S.lastBackup) / 864e5)} дн. тому` : 'Резервної копії ще немає'}</span><button class="btn" data-act="backup">Зберегти</button></div>` : ''}
     <div class="card">
       <div class="row" style="justify-content:space-between">
         <h2>${DAY_NAME[day]}</h2>
@@ -271,10 +331,10 @@ function todayScreen(){
 function bannersHtml(bw){
   let h = '';
   const key = String(S.blockStart);
-  if (S.blockStart && bw > blockLen()) h += `<div class="banner ok">🎓 <span class="grow"><b>Блок завершено!</b> Подивись підсумок і отримай сертифікат.</span><button class="btn" data-act="blockend">Підсумок</button></div>`;
-  else if (S.blockStart && bw === 3 && !S.cpSeen[key + ':3']) h += `<div class="banner">🧭 <span class="grow"><b>Контрольна точка, 3-й тиждень.</b> Якщо якась вправа не заходить — болить, незручно або тренажер вічно зайнятий — запиши в нотатку після тренування, замінимо.</span><button class="btn" data-act="cpok" data-k="${key}:3">Ок</button></div>`;
+  if (S.blockStart && bw > blockLen()) h += `<div class="banner ok">${tom('proud','tomban')}<span class="grow"><b>Блок завершено!</b> Подивись підсумок і отримай сертифікат.</span><button class="btn" data-act="blockend">Підсумок</button></div>`;
+  else if (S.blockStart && bw === 3 && !S.cpSeen[key + ':3']) h += `<div class="banner">${tom('inspector','tomban')}<span class="grow"><b>Контрольна точка, 3-й тиждень.</b> Якщо якась вправа не заходить — болить, незручно або тренажер вічно зайнятий — запиши в нотатку після тренування, замінимо.</span><button class="btn" data-act="cpok" data-k="${key}:3">Ок</button></div>`;
   const ds = deloadSignal();
-  if (ds) h += `<div class="banner">🪫 <span class="grow"><b>${ds === 'stuck' ? 'Прогрес стоїть 2 тижні.' : 'Два важкі тренування поспіль.'}</b> Схоже, час на легкий тиждень: ті самі вправи, вага −25%.</span></div>
+  if (ds) h += `<div class="banner">${tom(ds === 'stuck' ? 'shy' : 'back','tomban')}<span class="grow"><b>${ds === 'stuck' ? 'Прогрес стоїть 2 тижні.' : 'Два важкі тренування поспіль.'}</b> Схоже, час на легкий тиждень: ті самі вправи, вага −25%.</span></div>
     <div class="row" style="margin:-4px 0 12px"><button class="btn acc grow" data-act="deload">Почати легкий тиждень</button><button class="btn" data-act="deloadlater">Пізніше</button></div>`;
   return h;
 }
@@ -286,7 +346,7 @@ function startWorkout(day){
     const lastW = S.workouts[S.workouts.length - 1];
     S.active = { day, start: Date.now(), queue: q, idx: 0, items: {}, overAsked: false, prs: [], ups: 0, restEnd: null, restTotal: 0 };
     save();
-    if (lastW && Date.now() - lastW.end > 10 * 864e5) setTimeout(() => say(pick(FUN.comeback), 'fun'), 500);
+    if (lastW && Date.now() - lastW.end > 10 * 864e5) setTimeout(() => say(pick(FUN.comeback), 'fun', '', 'first'), 500);
   }
   requestWake();
   go('workout');
@@ -410,7 +470,7 @@ function warmHint(){
 }
 function feelHtml(st, it){
   if (st.type !== 'weight' || st.kind === 'warm' || !it.sets.length || !it.sets.every(s => s.done)) return '';
-  const o = [['easy','😌 Легко'],['ok','🙂 Норм'],['hard','😤 Важко']];
+  const o = [['easy',`${ic('smile')} Легко`],['ok',`${ic('meh')} Норм`],['hard',`${ic('tired')} Важко`]];
   return `<div class="feel"><span>Як було?</span>${o.map(([k, l]) => `<button data-feel="${k}" aria-pressed="${it.feel === k}">${l}</button>`).join('')}</div>`;
 }
 function navButtons(st, isLast, nextIsExtra){
@@ -438,9 +498,9 @@ function tick(){
     let msg, cls;
     if (r.ex === 0){ msg = left > 0 ? `лишилось ~${Math.round(left / 60)} хв · основне готово` : 'основне готово'; cls = 'okc'; }
     else if (left <= 0){ msg = `час вийшов · ще ~${Math.round(r.min)} хв`; cls = 'warnc'; }
-    else if (r.min <= left / 60){ msg = `лишилось ~${Math.round(left / 60)} хв ✅ встигаєш`; cls = 'okc'; }
-    else { msg = `лишилось ~${Math.round(left / 60)} хв ⚠️ ${r.ex} впр. можуть не влізти`; cls = 'warnc'; }
-    el.innerHTML = `<b>⏱ ${mmss(elapsed)}</b><small class="${cls}">${msg}</small>`;
+    else if (r.min <= left / 60){ msg = `лишилось ~${Math.round(left / 60)} хв · встигаєш`; cls = 'okc'; }
+    else { msg = `лишилось ~${Math.round(left / 60)} хв · ${r.ex} впр. можуть не влізти`; cls = 'warnc'; }
+    el.innerHTML = `<b>${ic('timer')} ${mmss(elapsed)}</b><small class="${cls}">${msg}</small>`;
   }
   const rest = document.getElementById('rest');
   if (rest){
@@ -459,9 +519,9 @@ function tick(){
   }
   if (left <= 0 && !A.overAsked && r.ex > 0 && sheetEl.hidden){
     A.overAsked = true; save();
-    openSheet(`<h2>${S.settings.duration} хв минуло ⏱</h2><p>Лишилось ${r.ex} ${r.ex === 1 ? 'вправа' : r.ex < 5 ? 'вправи' : 'вправ'} (~${Math.round(r.min)} хв). Доробиш?</p>
-      <div class="opts"><button data-act="closesheet">💪 Доробити решту<small>Тренування продовжується</small></button>
-      <button data-act="finish">✓ Завершити зараз<small>Збережеться те, що зроблено</small></button></div>`);
+    openSheet(`${tom('ogo','tomsheet')}<h2>${S.settings.duration} хв минуло</h2><p>Лишилось ${r.ex} ${r.ex === 1 ? 'вправа' : r.ex < 5 ? 'вправи' : 'вправ'} (~${Math.round(r.min)} хв). Доробиш?</p>
+      <div class="opts"><button data-act="closesheet">${ic('flex')} Доробити решту<small>Тренування продовжується</small></button>
+      <button data-act="finish">${ic('check')} Завершити зараз<small>Збережеться те, що зроблено</small></button></div>`);
   }
 }
 setInterval(tick, 1000);
@@ -487,19 +547,19 @@ const FUN = {
 const MILES = [20,25,30,40,50,60,70,80,90,100,110,120,140,160,180,200];
 const pick = a => a[Math.floor(Math.random() * a.length)];
 function funPhrase(st, it){
-  if (inDeload() && st.type === 'weight') return pick(FUN.deload);
-  const es = entriesFor(st.en), l = es[es.length - 1]; if (!l) return pick(FUN.first);
+  if (inDeload() && st.type === 'weight') return [pick(FUN.deload), 'back'];
+  const es = entriesFor(st.en), l = es[es.length - 1]; if (!l) return [pick(FUN.first), 'first'];
   if (st.type === 'weight'){
     const mx = sets => Math.max(0, ...sets.filter(x => x.done).map(x => x.w || 0));
     const nowW = mx(it.sets), wasW = mx(l.it.sets), ever = Math.max(...es.map(e => mx(e.it.sets)));
     const mile = MILES.filter(m => m > ever && m <= nowW).pop();
-    if (mile) return `Перші ${mile} кг! ${pick(FUN.milestone)}`;
-    if (wasW > 0 && nowW >= wasW * 1.1 && nowW - wasW >= 2 * st.step) return pick(FUN.wow);
-    if (es.length >= 2){ const w2 = mx(es[es.length - 2].it.sets); if (w2 > 0 && wasW > w2 && nowW > wasW) return pick(FUN.streak); }
+    if (mile) return [`Перші ${mile} кг! ${pick(FUN.milestone)}`, 'ogo'];
+    if (wasW > 0 && nowW >= wasW * 1.1 && nowW - wasW >= 2 * st.step) return [pick(FUN.wow), 'ogo'];
+    if (es.length >= 2){ const w2 = mx(es[es.length - 2].it.sets); if (w2 > 0 && wasW > w2 && nowW > wasW) return [pick(FUN.streak), 'smug']; }
   }
   const sc = sets => sets.filter(x => x.done).reduce((a, x) => a + (st.type === 'weight' ? (x.w || 0) * (x.r || 0) : (x.r || 0)), 0);
   const now = sc(it.sets), was = sc(l.it.sets);
-  return now > was * 1.005 ? pick(FUN.up) : now < was * 0.995 ? pick(FUN.down) : pick(FUN.same);
+  return now > was * 1.005 ? [pick(FUN.up), 'smug'] : now < was * 0.995 ? [pick(FUN.down), 'shy'] : [pick(FUN.same), 'loaf'];
 }
 function markDone(i){
   const A = S.active, id = A.queue[A.idx], st = effStep(A.day, id), it = A.items[id], s = it.sets[i];
@@ -515,13 +575,13 @@ function markDone(i){
     if (b && (s.w > b.w || (s.w === b.w && s.r > b.r)) && !A.prs.some(p => p.en === st.en && (p.w > s.w || (p.w === s.w && p.r >= s.r)))){
       A.prs = A.prs.filter(p => p.en !== st.en); A.prs.push({en: st.en, w: s.w, r: s.r});
       const nxt = st.max && s.r >= st.max ? ` · далі ${fmt(s.w + st.step)} кг` : '';
-      say(pick(FUN.pr), 'pr', `${esc(nm(st.en))} · ${fmt(s.w)} кг × ${fmt(s.r)}${nxt}`);
+      say(pick(FUN.pr), 'pr', `${esc(nm(st.en))} · ${fmt(s.w)} кг × ${fmt(s.r)}${nxt}`, 'proud');
     }
   }
   const allDone = it.sets.every(x => x.done);
   if (!allDone){ A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; }
   else if (st.kind === 'warm'){ A.restEnd = null; }
-  else { A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; if (!A.prs.some(p => p.en === st.en)) say(funPhrase(st, it), 'fun'); }
+  else { A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; if (!A.prs.some(p => p.en === st.en)){ const [ph, tt] = funPhrase(st, it); say(ph, 'fun', '', tt); } }
   save(); render();
 }
 
@@ -529,14 +589,14 @@ function markDone(i){
 function queueSheet(){
   const A = S.active;
   const li = (id, i) => { const st = effStep(A.day, id), x = A.items[id]; const d = x ? x.sets.filter(s => s.done).length : 0;
-    const mark = x && x.sets.length && d === x.sets.length ? '✅' : d ? '◐' : '○';
+    const mark = x && x.sets.length && d === x.sets.length ? ic('dot', 'okc') : d ? ic('half') : ic('ring');
     return `<li><button data-act="jump" data-i="${i}" ${i === A.idx ? 'aria-current="step"' : ''}><span class="st">${mark}</span><span class="qn">${esc(nm(st.en))}<small>${esc(st.dose)}${st.isAlt ? ' · заміна' : ''}</small></span></button></li>`; };
   const main = [], extra = [];
   A.queue.forEach((id, i) => (effStep(A.day, id).kind === 'extra' ? extra : main).push(li(id, i)));
   openSheet(`<h2>${DAY_NAME[A.day]}</h2><ul class="qlist">${main.join('')}</ul>
     ${extra.length ? `<div class="qsec">Якщо є час</div><ul class="qlist">${extra.join('')}</ul>` : ''}
-    <div class="opts"><button data-act="finish">✓ Завершити тренування<small>Збережеться те, що зроблено</small></button>
-    <button data-act="cancelw">✕ Скасувати тренування<small>Нічого не збережеться</small></button></div>`);
+    <div class="opts"><button data-act="finish">${ic('check')} Завершити тренування<small>Збережеться те, що зроблено</small></button>
+    <button data-act="cancelw">${ic('x')} Скасувати тренування<small>Нічого не збережеться</small></button></div>`);
 }
 function busySheet(){
   const A = S.active, id = A.queue[A.idx], base = stepById(A.day, id), it = A.items[id];
@@ -572,18 +632,18 @@ function finishScreen(){
   const f = lastFinished; const w = f && S.workouts.find(x => x.id === f.id);
   if (!w) return todayScreen();
   const dur = Math.round((w.end - w.start) / 60000);
-  return `<div class="top fintop"><span class="grow"></span>${gear()}</div><div class="fin-hero">${f.evening ? SHAKE_SVG : ''}<h1>🎉 Готово!</h1><p>${esc(f.phrase)}</p></div>
+  return `<div class="top fintop"><span class="grow"></span>${gear()}</div><div class="fin-hero">${tom(f.evening ? 'shake' : 'proud','tomhero')}<h1>Готово!</h1><p>${esc(f.phrase.replace(EMO, ''))}</p></div>
     <div class="stats">
       <div class="stat"><b>${dur} хв</b><span>тривалість</span></div>
       <div class="stat"><b>${w.sets}</b><span>підходів</span></div>
       <div class="stat"><b>${w.items.filter(it => it.kind !== 'warm').length}</b><span>вправ</span></div>
       <div class="stat"><b>${w.prs.length}</b><span>${w.prs.length === 1 ? 'рекорд' : 'рекордів'}</span></div>
     </div>
-    <p class="muted small" style="text-align:center;margin:-6px 0 12px">Піднято загалом: ${fmtInt(w.tonnage)} кг${f.evening ? ` · 🥤 шейк №${shakes()}` : ''}</p>
-    ${w.prs.map(p => `<div class="newach"><span>🏆</span><div><b>${esc(nm(p.en))}</b><br><small class="muted">${fmt(p.w)} кг × ${fmt(p.r)}</small></div></div>`).join('')}
-    ${f.fresh.map(id => { const a = achById(id); return `<div class="newach"><span>${a[1]}</span><div><b>Нова ачівка!</b><br>${esc(a[2])}</div></div>`; }).join('')}
+    <p class="muted small" style="text-align:center;margin:-6px 0 12px">Піднято загалом: ${fmtInt(w.tonnage)} кг${f.evening ? ` · шейк №${shakes()}` : ''}</p>
+    ${w.prs.map(p => `<div class="newach"><span>${ic('trophy')}</span><div><b>${esc(nm(p.en))}</b><br><small class="muted">${fmt(p.w)} кг × ${fmt(p.r)}</small></div></div>`).join('')}
+    ${f.fresh.map(id => { const a = achById(id); return `<div class="newach"><span>${ic(a[1])}</span><div><b>Нова ачівка!</b><br>${esc(a[2])}</div></div>`; }).join('')}
     <div class="card"><h3>Як пройшло?</h3>
-      <div class="moods">${['😫','😐','🙂','💪'].map(m => `<button data-mood="${m}" aria-pressed="${w.mood === m}">${m}</button>`).join('')}</div>
+      <div class="moods">${MOODS.map(([m, i, l]) => `<button data-mood="${m}" aria-pressed="${w.mood === m}" aria-label="${l}">${ic(i)}<small>${l}</small></button>`).join('')}</div>
       <textarea id="wnote" placeholder="Нотатка: як почувалась, що відзначити…">${esc(w.note)}</textarea>
     </div>
     <button class="big" data-act="savefin">Зберегти</button>`;
@@ -616,19 +676,20 @@ function exSheet(day, id){
 }
 
 /* ---------- історія ---------- */
-const moodOf = w => w.mood || '';
+const MOODS = [['😫','tired','Важко'],['😐','meh','Так собі'],['🙂','smile','Добре'],['💪','flex','Сила']];
+const moodOf = w => { const m = MOODS.find(x => x[0] === w.mood); return m ? ic(m[1]) : ''; };
 function historyScreen(){
   const ws = [...S.workouts].reverse();
   return `<div class="top"><h1>Історія</h1>${gear()}</div>
-    ${ws.length ? `<div class="hlist">${ws.map(w => `<button class="hitem" data-hist="${w.id}"><b>${dShort(w.start)} · ${DAY_NAME[w.day]}</b> ${moodOf(w)}<small>${Math.round((w.end - w.start) / 60000)} хв · ${w.sets} підходів · ${fmtInt(w.tonnage)} кг${w.prs.length ? ` · 🏆 ${w.prs.length}` : ''}</small></button>`).join('')}</div>`
-      : `<div class="empty">Тут зʼявляться тренування після першого завершеного.</div>`}
+    ${ws.length ? `<div class="hlist">${ws.map(w => `<button class="hitem" data-hist="${w.id}"><b>${dShort(w.start)} · ${DAY_NAME[w.day]}</b> ${moodOf(w)}<small>${Math.round((w.end - w.start) / 60000)} хв · ${w.sets} підходів · ${fmtInt(w.tonnage)} кг${w.prs.length ? ` · ${ic('trophy')} ${w.prs.length}` : ''}</small></button>`).join('')}</div>`
+      : `<div class="empty">${tom('sleep','tomempty')}Тут зʼявляться тренування після першого завершеного. Поки Томек спить.</div>`}
     ${tabbar()}`;
 }
 function histSheet(id){
   const w = S.workouts.find(x => x.id === id); if (!w) return;
   openSheet(`<h2>${dShort(w.start)} · ${DAY_NAME[w.day]} ${moodOf(w)}</h2>
     <p>${new Date(w.start).toTimeString().slice(0, 5)}–${new Date(w.end).toTimeString().slice(0, 5)} · ${w.sets} підходів · ${fmtInt(w.tonnage)} кг</p>
-    ${w.note ? `<p>📝 ${esc(w.note)}</p>` : ''}
+    ${w.note ? `<p>${ic('pencil')} ${esc(w.note)}</p>` : ''}
     <div>${w.items.map(it => `<div class="hex"><b>${esc(nm(it.en))}</b>${it.alt ? ' <small class="muted">(заміна)</small>' : ''}<div class="s">${it.sets.map(s => it.type === 'weight' ? `${fmt(s.w)} кг × ${fmt(s.r)}` : s.r != null ? `${fmt(s.r)}${it.unit === 'sec' ? ' с' : it.unit === 'm' ? ' м' : ''}` : '✓').join(' · ')}</div></div>`).join('')}</div>
     <div class="opts" style="margin-top:14px"><button data-act="editw" data-id="${w.id}">Редагувати підходи<small>Виправити вагу чи повтори</small></button><button data-act="delw" data-id="${w.id}">Видалити це тренування<small>Можна буде повернути одразу після видалення</small></button><button data-act="closesheet">Закрити</button></div>`);
 }
@@ -671,11 +732,11 @@ function progressScreen(){
   const bw = blockWeek(), tot = S.workouts.reduce((a, w) => a + (w.tonnage || 0), 0);
   const unlocked = achList().filter(a => S.ach[a[0]]).length;
   return `<div class="top"><h1>Прогрес</h1>${gear()}</div>
-    <div class="kpis"><div class="stat"><b>${S.workouts.length}</b><span>тренувань</span></div><div class="stat"><b>🔥 ${streakWeeks()}</b><span>тижнів поспіль</span></div><div class="stat"><b>🥤 ${shakes()}</b><span>шейків заслужено</span></div></div>
+    <div class="kpis"><div class="stat"><b>${S.workouts.length}</b><span>тренувань</span></div><div class="stat"><b>${ic('flame')} ${streakWeeks()}</b><span>тижнів поспіль</span></div><div class="stat"><b>${ic('bottle')} ${shakes()}</b><span>шейків заслужено</span></div></div>
     <div class="card" style="margin-top:12px"><h3>Мʼязи цього тижня</h3>${weekMap()}</div>
-    <div class="card"><h3>Блок: ${bw <= blockLen() ? `тиждень ${bw} з ${blockLen()}` : 'завершено 🎓'}</h3><div class="bar"><i style="width:${Math.min(100, Math.round(Math.min(bw, blockLen()) / blockLen() * 100))}%"></i></div>
+    <div class="card"><h3>Блок: ${bw <= blockLen() ? `тиждень ${bw} з ${blockLen()}` : 'завершено'}</h3><div class="bar"><i style="width:${Math.min(100, Math.round(Math.min(bw, blockLen()) / blockLen() * 100))}%"></i></div>
       ${calMonth(now.getFullYear(), now.getMonth(), days)}${calMonth(pm.getFullYear(), pm.getMonth(), days)}</div>
-    <div class="card"><h3>Ачівки · ${unlocked} з ${achList().length}</h3><div class="achs">${achList().map(([id, e, t]) => `<div class="ach ${S.ach[id] ? '' : 'lock'}"><span>${S.ach[id] ? e : '🔒'}</span>${esc(t)}</div>`).join('')}</div></div>
+    <div class="card"><h3>Ачівки · ${unlocked} з ${achList().length}</h3><div class="achs">${achList().map(([id, e, t]) => `<div class="ach ${S.ach[id] ? '' : 'lock'}"><span>${ic(S.ach[id] ? e : 'lock')}</span>${esc(t)}</div>`).join('')}</div></div>
     <div class="card"><h3>Вага по вправі</h3>${exs.length ? `<select data-act="chartex" aria-label="Вправа">${exs.map(e => `<option value="${esc(e)}" ${e === chartEx ? 'selected' : ''}>${esc(nm(e))}</option>`).join('')}</select>${lineChart(pts, 'найбільша вага за тренування, кг')}` : '<p class="muted small">Графік зʼявиться після першого тренування.</p>'}</div>
     ${tabbar()}`;
 }
@@ -692,10 +753,10 @@ function weekMap(){
 
 /* ---------- дім ---------- */
 const HOME = {
-  p1: [{id:'neck', icon:'🦒', title:'Шия', desc:'«Кивок» лежачи 10 × 10 с і тиск головою в долоню без руху', per:7, freq:'щодня'},
-       {id:'calf', icon:'🦵', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'}],
-  p2: [{id:'calf', icon:'🦵', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'},
-       {id:'balance', icon:'🦩', title:'Баланс', desc:'Поки чистиш зуби, стій на одній нозі: по 30 с на кожну, двічі. Коліно мʼяке, погляд прямо, раковина поруч. Хитаєшся — так і має бути, саме це й тренує гомілкостоп.', per:5, freq:'5 днів на тиждень'}]
+  p1: [{id:'neck', icon:'head', title:'Шия', desc:'«Кивок» лежачи 10 × 10 с і тиск головою в долоню без руху', per:7, freq:'щодня'},
+       {id:'calf', icon:'stairs', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'}],
+  p2: [{id:'calf', icon:'stairs', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'},
+       {id:'balance', icon:'oneleg', title:'Баланс', desc:'Поки чистиш зуби, стій на одній нозі: по 30 с на кожну, двічі. Коліно мʼяке, погляд прямо, раковина поруч. Хитаєшся — так і має бути, саме це й тренує гомілкостоп.', per:5, freq:'5 днів на тиждень'}]
 };
 const homeDone = (d, id) => (S.home[d] || []).includes(id);
 function homeCount(id){ return Object.values(S.home).filter(a => a.includes(id)).length; }
@@ -706,7 +767,7 @@ function homeScreen(){
   return `<div class="top"><h1>Вдома</h1>${gear()}</div>
     <p class="muted" style="margin:-6px 0 14px">Короткі вправи поза залом. Познач, коли зробила.</p>
     ${HOME[person].map(h => { const done = homeDone(today, h.id); const wk = days.filter(d => homeDone(d.k, h.id)).length;
-      return `<div class="card"><div class="row"><span style="font-size:30px">${h.icon}</span><div class="grow"><h2>${h.title}</h2><p class="muted small">${h.freq} · цього тижня ${wk} з ${h.per}</p></div></div>
+      return `<div class="card"><div class="row"><span class="hicon">${ic(h.icon)}</span><div class="grow"><h2>${h.title}</h2><p class="muted small">${h.freq} · цього тижня ${wk} з ${h.per}</p></div></div>
         <p style="margin:10px 0 12px">${esc(h.desc)}</p>
         <button class="warmcheck ${done ? 'done' : ''}" data-home="${h.id}"><i>${done ? '✓' : ''}</i>${done ? 'Сьогодні зроблено' : 'Зробила сьогодні'}</button>
         <div class="hweek">${days.map(d => `<span class="${homeDone(d.k, h.id) ? 'h' : ''} ${d.t ? 't' : ''}">${d.l}</span>`).join('')}</div>
@@ -727,12 +788,12 @@ function blockStats(){
 }
 function blockEndSheet(){
   const b = blockStats();
-  openSheet(`<h2>🎓 Блок завершено!</h2><p>${dShort(b.from)} — ${dShort(b.to)} · ${b.n} тренувань · ${b.sets} підходів · ${b.prs} рекордів · 🥤 ${b.shakes}</p>
+  openSheet(`${tom('inspector','tomsheet')}<h2>Блок завершено!</h2><p>${dShort(b.from)} — ${dShort(b.to)} · ${b.n} тренувань · ${b.sets} підходів · ${b.prs} рекордів · шейків: ${b.shakes}</p>
     ${b.prog.length ? `<div class="qsec">Найбільший прогрес</div>${b.prog.map(x => `<div class="mrow"><span>${esc(nm(x.en))}</span><span>${fmt(x.from)} → <b>${fmt(x.to)}</b> кг <span class="dn">+${Math.round(x.pct)}%</span></span></div>`).join('')}` : ''}
     <div class="opts" style="margin-top:14px">
-      <button data-act="cert">🖼 Сертифікат<small>Картинка з підсумком — зберегти у «Фото» або поділитися</small></button>
-      ${blockLen() < 12 ? `<button data-act="extend">➕ Продовжити блок ще на 2 тижні<small>Якщо ваги ще ростуть — нічого не міняємо</small></button>` : ''}
-      <button data-act="newblock">🔁 Почати новий блок<small>Тижні рахуються з сьогодні</small></button>
+      <button data-act="cert">${ic('image')} Сертифікат<small>Картинка з підсумком — зберегти у «Фото» або поділитися</small></button>
+      ${blockLen() < 12 ? `<button data-act="extend">${ic('plus')} Продовжити блок ще на 2 тижні<small>Якщо ваги ще ростуть — нічого не міняємо</small></button>` : ''}
+      <button data-act="newblock">${ic('repeat')} Почати новий блок<small>Тижні рахуються з сьогодні</small></button>
     </div>`);
 }
 async function certificate(){
@@ -742,15 +803,15 @@ async function certificate(){
   x.fillStyle = bg; x.fillRect(0, 0, 1080, 1350);
   const g = x.createLinearGradient(0, 0, 1080, 0); g.addColorStop(0, acc); g.addColorStop(1, '#ffcf5a'); x.fillStyle = g; x.fillRect(0, 0, 1080, 18); x.fillRect(0, 1332, 1080, 18);
   x.textAlign = 'center'; const F = (w, s) => `${w} ${s}px -apple-system, "SF Pro Display", "Segoe UI", Roboto, sans-serif`;
-  x.font = F(400, 120); x.fillText('🎓', 540, 210);
+  try { const li = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = tomUrl('logo'); }); const lw = 250, lh = lw * li.naturalHeight / li.naturalWidth; x.drawImage(li, 540 - lw / 2, 255 - lh, lw, lh); } catch(e){}
   x.fillStyle = acc; x.font = F(800, 46); x.fillText('СЕРТИФІКАТ', 540, 300);
   x.fillStyle = ink; x.font = F(800, 92); x.fillText(who(), 540, 420);
   x.fillStyle = mut; x.font = F(500, 40); x.fillText(`завершила ${blockLen()}-тижневий блок`, 540, 490); x.fillText(`${dShort(b.from)} — ${dShort(b.to)}`, 540, 545);
-  const st = [[b.n, 'тренувань'], [b.sets, 'підходів'], [b.prs, 'рекордів'], [b.shakes, 'шейків 🥤']];
+  const st = [[b.n, 'тренувань'], [b.sets, 'підходів'], [b.prs, 'рекордів'], [b.shakes, 'шейків']];
   st.forEach(([v, l], i) => { const cx = 150 + i * 260; x.fillStyle = ink; x.font = F(800, 72); x.fillText(String(v), cx, 690); x.fillStyle = mut; x.font = F(500, 30); x.fillText(l, cx, 735); });
   if (b.prog.length){ x.fillStyle = acc; x.font = F(800, 36); x.fillText('НАЙБІЛЬШИЙ ПРОГРЕС', 540, 850);
     b.prog.forEach((p, i) => { x.fillStyle = ink; x.font = F(600, 40); x.fillText(`${nm(p.en)}: ${fmt(p.from)} → ${fmt(p.to)} кг (+${Math.round(p.pct)}%)`, 540, 920 + i * 62); }); }
-  x.fillStyle = mut; x.font = F(600, 34); x.fillText('Зал на двох 🏋️', 540, 1270);
+  x.fillStyle = mut; x.font = F(600, 34); x.fillText('Зал на двох · тренер Томек', 540, 1270);
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); const name = `sertyfikat-${who()}-${iso(new Date())}.png`;
   try { const file = new File([blob], name, {type: 'image/png'});
     if (navigator.canShare && navigator.canShare({files: [file]})) await navigator.share({files: [file], title: 'Сертифікат'});
@@ -773,7 +834,7 @@ function measureScreen(){
       <div class="card"><h3>Графік</h3><select data-act="mkey" aria-label="Замір">${MF.map(([k, l]) => `<option value="${k}" ${k === mKey ? 'selected' : ''}>${l}</option>`).join('')}</select>${lineChart(pts, mf[1] + ', ' + mf[2])}
       <p class="muted small" style="margin-top:6px">Дивись на тенденцію за 3–4 тижні, а не на різницю між двома тижнями.</p></div>
       <div class="card"><h3>Усі записи</h3><p class="muted small" style="margin:-4px 0 6px">Натисни на запис, щоб змінити.</p>${[...M].reverse().map(m => `<button class="mitem" data-act="editm" data-date="${m.date}"><span>${dShort(new Date(m.date).getTime())}</span><span class="small muted">${MF.filter(([k]) => m[k] != null).map(([k]) => fmt(m[k])).join(' · ')}</span>${ic('right')}</button>`).join('')}</div>`
-      : `<div class="empty">Вноси заміри раз на тиждень, вранці натщесерце — тут зʼявляться зміни й графіки.</div>`}
+      : `<div class="empty">${tom('loaf','tomempty')}Вноси заміри раз на тиждень, вранці натщесерце — тут зʼявляться зміни й графіки.</div>`}
     ${tabbar()}`;
 }
 function addMeasureSheet(editDate){
@@ -800,10 +861,10 @@ function settingsSheet(){
     </div>
     <p style="margin-top:14px">Дані</p>
     <div class="opts">
-      <button data-act="backup">💾 Зберегти резервну копію<small>${S.lastBackup ? 'Остання: ' + dShort(S.lastBackup) : 'Ще не було'}</small></button>
-      <button data-act="restore">📂 Відновити з копії<small>Замінить поточні дані</small></button>
-      <button data-act="newblock">🔁 Почати новий блок<small>Лічильник тижнів почнеться з сьогодні</small></button>
-      <button data-act="switchp">👤 Змінити людину<small>Зараз: ${esc(who())}. Дані кожної зберігаються окремо</small></button>
+      <button data-act="backup">${ic('save')} Зберегти резервну копію<small>${S.lastBackup ? 'Остання: ' + dShort(S.lastBackup) : 'Ще не було'}</small></button>
+      <button data-act="restore">${ic('folder')} Відновити з копії<small>Замінить поточні дані</small></button>
+      <button data-act="newblock">${ic('repeat')} Почати новий блок<small>Лічильник тижнів почнеться з сьогодні</small></button>
+      <button data-act="switchp">${ic('user')} Змінити людину<small>Зараз: ${esc(who())}. Дані кожної зберігаються окремо</small></button>
     </div>
     <p class="muted small" style="margin-top:14px">Порада: якщо екран гасне посеред тренування — Параметри iPhone → «Екран і яскравість» → «Автоблокування» → довше.</p>
     <p class="muted small" style="margin-top:8px">Версія ${APP_VERSION} · програма від ${esc(P.version)}</p>
@@ -817,7 +878,7 @@ async function backup(){
     const file = new File([data], name, {type: 'application/json'});
     if (navigator.canShare && navigator.canShare({files: [file]})){ await navigator.share({files: [file], title: name}); }
     else { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
-    S.lastBackup = Date.now(); save(); toast('Резервну копію збережено 💾'); closeSheet(); render();
+    S.lastBackup = Date.now(); save(); toast('Резервну копію збережено ✓'); closeSheet(); render();
   } catch(e){ if (e && e.name !== 'AbortError') toast('Не вдалося зберегти копію'); }
 }
 function restoreFrom(file){
@@ -854,7 +915,7 @@ document.addEventListener('click', e => {
   if (d.hist){ histSheet(d.hist); return; }
   if (d.mood){ const w = S.workouts.find(x => x.id === lastFinished.id); if (w){ w.mood = d.mood; save(); app.querySelectorAll('[data-mood]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mood === d.mood)); } return; }
   if (d.feel && S.active){ const it = S.active.items[S.active.queue[S.active.idx]]; it.feel = it.feel === d.feel ? null : d.feel; save(); render(); return; }
-  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(achById(fresh[0])[1], 'Нова ачівка!', esc(achById(fresh[0])[2])); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
+  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(tom('proud'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
   if (d.theme){ LS.set('trn:theme', d.theme); applyTheme(); settingsSheet(); return; }
   if (d.dur){ S.settings.duration = +d.dur; S.settings.durTouched = true; save(); settingsSheet(); render(); return; }
   if (d.rest){ const [k, v] = d.rest.split(':'); S.settings[k] = +v; save(); settingsSheet(); return; }
@@ -892,7 +953,7 @@ document.addEventListener('click', e => {
     case 'cancelw': openSheet(`<h2>Скасувати тренування?</h2><p>Нічого з сьогоднішнього не збережеться.</p><div class="opts"><button data-act="docancel">Так, скасувати</button><button data-act="closesheet">Ні, продовжити</button></div>`); break;
     case 'docancel': S.active = null; save(); closeSheet(); releaseWake(); go('today'); break;
     case 'savefin': { const w = S.workouts.find(x => x.id === lastFinished.id); const n = document.getElementById('wnote'); if (w && n){ w.note = n.value.trim(); save(); } toast('Збережено ✓'); go('today'); break; }
-    case 'delw': openSheet(`<h2>Видалити тренування?</h2><p>Це не можна скасувати.</p><div class="opts"><button data-act="dodelw" data-id="${d.id}">🗑 Видалити</button><button data-act="closesheet">Ні</button></div>`); break;
+    case 'delw': openSheet(`<h2>Видалити тренування?</h2><p>Це не можна скасувати.</p><div class="opts"><button data-act="dodelw" data-id="${d.id}">${ic('trash')} Видалити</button><button data-act="closesheet">Ні</button></div>`); break;
     case 'dodelw': { const gone = S.workouts.find(w => w.id === d.id); S.workouts = S.workouts.filter(w => w.id !== d.id); undoBuf = {kind: 'w', item: gone, ach: Object.assign({}, S.ach)}; const lostW = recheckAch(); save(); closeSheet(); render(); toast(`Тренування видалено${lostW.length ? ` · ачівок знято: ${lostW.length}` : ''} <button class="undo" data-act="undo">Повернути</button>`, '', 6000); break; }
     case 'addm': addMeasureSheet(); break;
     case 'savem': {
@@ -901,7 +962,7 @@ document.addEventListener('click', e => {
       if (!any){ toast('Заповни хоча б одне поле'); break; }
       S.measurements = S.measurements.filter(x => x.date !== date && x.date !== d.orig); S.measurements.push(m);
       const fresh = checkAch(); save(); closeSheet(); render();
-      if (fresh.length) sayIco(achById(fresh[0])[1], 'Нова ачівка!', esc(achById(fresh[0])[2])); else toast('Заміри збережено ✓'); break; }
+      if (fresh.length) sayIco(tom('proud'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else toast('Заміри збережено ✓'); break; }
     case 'editm': addMeasureSheet(d.date); break;
     case 'delm': { if (!t.classList.contains('armed')){ t.classList.add('armed'); t.innerHTML = `${ic('trash')} Точно видалити? Натисни ще раз`; break; }
       const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone, ach: Object.assign({}, S.ach)}; recheckAch(); save(); closeSheet(); render();
@@ -922,7 +983,7 @@ document.addEventListener('click', e => {
     case 'blockend': blockEndSheet(); break;
     case 'cert': certificate(); break;
     case 'cpok': S.cpSeen[d.k] = 1; save(); render(); break;
-    case 'deload': S.deloadUntil = Date.now() + 7 * 864e5; save(); render(); toast('🪶 Легкий тиждень: вага −25% на 7 днів'); break;
+    case 'deload': S.deloadUntil = Date.now() + 7 * 864e5; save(); render(); say('Легкий тиждень: вага −25% на 7 днів', 'fun', 'Томек схвалює', 'back'); break;
     case 'deloadlater': S.deloadSnooze = Date.now() + 7 * 864e5; save(); render(); break;
     case 'mnote': { const id = S.active.queue[S.active.idx], st = effStep(S.active.day, id);
       openSheet(`<h2>Налаштування тренажера</h2><p>${esc(nm(st.en))} — що виставляти, щоб не підбирати щоразу.</p>

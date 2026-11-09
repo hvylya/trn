@@ -312,3 +312,33 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 .wtop .iconbtn:last-child{flex:none}
 @media (max-width:400px){ .wtop .iconbtn.wide{width:44px; padding:0; justify-content:center} .wtop .iconbtn.wide span{display:none} }
 .wtop .clock small{display:block}
+
+/* Томек */
+.tom{display:block; height:auto; user-select:none; -webkit-user-drag:none; pointer-events:none}
+.tcard .tom{width:54px; flex:none; margin:-4px 0}
+.tomhead{width:46px; flex:none; margin:-4px 0}
+.tomban{width:52px; flex:none; margin:-6px 0}
+.tomhero{width:190px; margin:0 auto 6px}
+.tomchoose{width:min(260px,70vw); margin:0 auto 14px}
+.tomsheet{width:130px; margin:-4px auto 6px}
+.tomempty{width:150px; margin:0 auto 12px; opacity:.95}
+/* іконки замість емодзі */
+.pill .ic{width:16px; height:16px; vertical-align:-3px}
+.banner > .ic{width:24px; height:24px; flex:none}
+.ach span .ic{width:28px; height:28px; display:block; margin:0 auto 4px}
+.ach.lock span .ic{opacity:.5}
+.newach span .ic{width:28px; height:28px}
+.newach span{display:grid; place-items:center}
+.hicon{width:52px; height:52px; border-radius:14px; display:grid; place-items:center; background:color-mix(in srgb,var(--accent) 16%, var(--surface2)); color:var(--accent); flex:none}
+.hicon .ic{width:28px; height:28px}
+.moods button{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:12px; color:var(--muted)}
+.moods button .ic{width:26px; height:26px; color:var(--ink)}
+.moods button[aria-pressed="true"] .ic, .moods button[aria-pressed="true"]{color:var(--accent)}
+.feel button{display:inline-flex; align-items:center; justify-content:center; gap:6px}
+.feel button .ic{width:18px; height:18px}
+.qlist .st .ic{width:20px; height:20px}
+.qlist .st .ic.okc{color:var(--ok)}
+.stat b .ic{width:20px; height:20px; vertical-align:-3px}
+.hitem .ic{width:16px; height:16px; vertical-align:-3px}
+.clock b .ic{width:18px; height:18px; vertical-align:-3px}
+.empty .tom{margin-bottom:12px}

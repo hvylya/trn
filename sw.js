@@ -1,8 +1,8 @@
 /* Офлайн: усі файли застосунку зберігаються на телефоні. Змінюй VERSION при кожному оновленні. */
-const VERSION = 'trn-v1.6.0';
+const VERSION = 'trn-v1.7.0';
 const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'program.js', 'bodymap.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
-  'img/adductor.jpg', 'img/bench-fw163.jpg', 'img/biceps-s40.jpg', 'img/chest-s13.jpg', 'img/hipthrust-drax.jpg', 'img/lat-s33.jpg', 'img/legcurl-s72.jpg', 'img/legext-s71.jpg', 'img/legpress-hack.jpg', 'img/legpress-s70.jpg', 'img/ms50.jpg', 'img/multifly.jpg', 'img/pecfly.jpg', 'img/rack-platform.jpg', 'img/row-s34.jpg', 'img/tbar-drax.jpg', 'img/triceps-s42.jpg', 'img/vsquat-drax.jpg'];
+  'img/tomek/logo.png', 'img/tomek/ogo.png', 'img/tomek/smug.png', 'img/tomek/shake.png', 'img/tomek/inspector.png', 'img/tomek/proud.png', 'img/tomek/sleep.png', 'img/tomek/back.png', 'img/tomek/shy.png', 'img/tomek/loaf.png', 'img/tomek/first.png', 'img/adductor.jpg', 'img/bench-fw163.jpg', 'img/biceps-s40.jpg', 'img/chest-s13.jpg', 'img/hipthrust-drax.jpg', 'img/lat-s33.jpg', 'img/legcurl-s72.jpg', 'img/legext-s71.jpg', 'img/legpress-hack.jpg', 'img/legpress-s70.jpg', 'img/ms50.jpg', 'img/multifly.jpg', 'img/pecfly.jpg', 'img/rack-platform.jpg', 'img/row-s34.jpg', 'img/tbar-drax.jpg', 'img/triceps-s42.jpg', 'img/vsquat-drax.jpg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES.map(u => new Request(u, {cache: 'reload'})))).then(() => self.skipWaiting()));
 });
