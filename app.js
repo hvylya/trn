@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.11.1';
+const APP_VERSION = '1.11.2';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -650,7 +650,7 @@ const PHRASES_DAY = ['Готово! Так тримати 💪','Ще одна �
 let lastFinished = null;
 function finishWorkout(){
   const A = S.active; if (!A) return;
-  const items = A.queue.map(id => { const st = effStep(A.day, id), x = A.items[id]; return x ? {en: st.en, kind: st.kind, type: st.type, unit: st.unit, side: !!st.side, alt: !!st.isAlt, feel: x.feel || null, sets: x.sets.filter(s => s.done).map(s => ({w: s.w ?? null, r: s.r ?? null, done: true}))} : null; }).filter(x => x && x.sets.length);
+  const items = A.queue.map(id => { const st = effStep(A.day, id), x = A.items[id]; return x ? {en: st.en, kind: st.kind, type: st.type, unit: st.unit, side: !!st.side, alt: !!st.isAlt, feel: x.feel || null, sets: x.sets.filter(s => s.done).map(s => ({w: s.w ?? null, r: s.r ?? null, done: true, ...(s.at ? {at: s.at} : {})}))} : null; }).filter(x => x && x.sets.length);
   let ups = 0, firsts = 0;
   items.forEach(it => { if (it.kind === 'warm') return; const l = lastFor(it.en); if (!l){ firsts++; return; } if (it.type !== 'weight') return; if (l.it.sets[0] && it.sets[0] && it.sets[0].w > l.it.sets[0].w) ups++; });
   const rec = { id: 'w' + A.start, day: A.day, start: A.start, end: Date.now(), items, prs: A.prs, ups, tonnage: tonnageOf(items), sets: items.filter(it => it.kind !== 'warm').reduce((a, it) => a + it.sets.length, 0), mood: null, note: '', deload: !!inDeload() };
