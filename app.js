@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -86,7 +86,7 @@ const LS = {
 };
 let person = LS.get('trn:person', null);
 let S = null;
-const blank = () => ({ v:1, settings:{duration:90, restHeavy:150, restMain:120, restIso:90, restCore:45}, blockStart:null, blockLen:8, mnotes:{}, home:{}, deloadUntil:null, deloadSnooze:null, cpSeen:{}, workouts:[], active:null, measurements:[], ach:{}, lastBackup:null });
+const blank = () => ({ v:1, settings:{duration:90, restHeavy:150, restMain:120, restIso:90, restCore:45, fun:"normal"}, blockStart:null, blockLen:8, mnotes:{}, home:{}, deloadUntil:null, deloadSnooze:null, cpSeen:{}, workouts:[], active:null, measurements:[], ach:{}, lastBackup:null });
 function load(){ S = Object.assign(blank(), person ? LS.get('trn:data:' + person, {}) : {}); S.settings = Object.assign(blank().settings, S.settings); if (!S.settings.durTouched) S.settings.duration = 90; }
 function save(){ if (person) LS.set('trn:data:' + person, S); }
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
@@ -139,7 +139,9 @@ let screen = 'today', tab = 'today', selDay = null, histOpen = null, chartEx = n
 function go(s){ screen = s; if (['today','home','history','progress','measure'].includes(s)) tab = s; render(); window.scrollTo(0, 0); }
 
 function toast(html, cls, ms){
-  ms = ms || (cls === 'pr' || cls === 'fun' ? 4500 : 2600);
+  const len = String(html).replace(/<[^>]+>/g, '').length;
+  ms = ms || (cls === 'pr' ? 5500 : cls === 'fun' ? Math.min(5500, Math.max(3500, 2000 + len * 45)) : 2000);
+  toast.end = Date.now() + ms;
   const n = toast.n = (toast.n || 0) + 1;
   toastEl.innerHTML = `<div class="tcard ${cls || ''}">${html}<i class="tbar" style="animation-duration:${ms}ms"></i></div>`;
   toastEl.hidden = false;
@@ -156,9 +158,10 @@ function sayIco(ico, title, sub, cls){ toast(`${ico ? `<span class="tico">${ico}
 function say(text, cls, sub, t){ const m = text.match(EMO); sayIco(t ? tom(t) : (m ? m[1] : ''), esc(m ? text.slice(0, m.index) : text), sub, cls); }
 toastEl.addEventListener('click', e => { if (!e.target.closest('button')) { clearTimeout(toast.t); hideToast(); } });
 (function(){ let x0 = null, y0 = 0, dx = 0, dy = 0;
-  toastEl.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = dy = 0; }, {passive: true});
+  toastEl.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = dy = 0;
+    clearTimeout(toast.t); toast.left = Math.max(800, (toast.end || 0) - Date.now()); const b = toastEl.querySelector('.tbar'); if (b) b.style.animationPlayState = 'paused'; }, {passive: true});
   toastEl.addEventListener('touchmove', e => { if (x0 == null) return; dx = e.touches[0].clientX - x0; dy = e.touches[0].clientY - y0; const c = toastEl.firstElementChild; if (c) c.style.transform = `translate(${dx}px, ${Math.max(0, dy)}px)`; }, {passive: true});
-  toastEl.addEventListener('touchend', () => { if (x0 == null) return; const c = toastEl.firstElementChild; if (Math.abs(dx) > 60 || dy > 30){ clearTimeout(toast.t); hideToast(); } else if (c) c.style.transform = ''; x0 = null; });
+  toastEl.addEventListener('touchend', () => { if (x0 == null) return; const c = toastEl.firstElementChild; if (Math.abs(dx) > 60 || dy > 30){ clearTimeout(toast.t); hideToast(); } else { if (c) c.style.transform = ''; const n = toast.n; toast.end = Date.now() + toast.left; toast.t = setTimeout(() => hideToast(n), toast.left); const b = toastEl.querySelector('.tbar'); if (b) b.style.animationPlayState = 'running'; } x0 = null; });
 })();
 function openSheet(html){
   sheetEl.innerHTML = `<div class="sh" role="dialog" aria-modal="true"><div class="grab" aria-hidden="true"></div><button class="shx" data-act="closesheet" aria-label="Закрити">${ic('x')}</button>${html}</div>`;
@@ -346,7 +349,7 @@ function startWorkout(day){
     const lastW = S.workouts[S.workouts.length - 1];
     S.active = { day, start: Date.now(), queue: q, idx: 0, items: {}, overAsked: false, prs: [], ups: 0, restEnd: null, restTotal: 0 };
     save();
-    if (lastW && Date.now() - lastW.end > 10 * 864e5) setTimeout(() => say(pick(FUN.comeback), 'fun', '', 'first'), 500);
+    if (lastW && Date.now() - lastW.end > 10 * 864e5){ S.active.tb = {n: 1, pr: 0, at: 0, first: true, ex: 0}; setTimeout(() => say(pick(FUN.comeback), 'fun', '', 'first'), 500); }
   }
   requestWake();
   go('workout');
@@ -544,44 +547,58 @@ const FUN = {
   pr: ['Новий рекорд! 🏆','Ого, ти сильна! 🏆','Рекорд! Залізо в шоці 🏆','Оце потужно! Новий рекорд 🏆'],
   comeback: ['З поверненням! Мʼязи все памʼятають 🧠','Ти повернулась — це головне 🙌','Почнемо мʼякенько, тіло швидко згадає 🌱']
 };
+/* бюджет тостів: «помірно» — до 3 за тренування, між ними ≥ 2 вправи; «лише рекорди»; «часто» — як раніше, але без «так само» */
+function funAllowed(prio, isPR){
+  const A = S.active, mode = S.settings.fun || 'normal'; A.tb = A.tb || {n: 0, pr: 0, at: -9, first: false, ex: 0};
+  const b = A.tb;
+  if (mode === 'often') return prio > 0 || isPR;
+  if (isPR) return b.pr < 2 && b.n < 4;
+  if (mode === 'pr') return prio >= 5;
+  if (prio <= 0 || b.n >= 3 || b.ex - b.at < 2) return false;
+  if (prio === 1){ if (b.first) return false; b.first = true; }
+  return true;
+}
+function funShown(isPR){ const b = S.active.tb; b.n++; b.at = b.ex; if (isPR) b.pr++; }
 const MILES = [20,25,30,40,50,60,70,80,90,100,110,120,140,160,180,200];
 const pick = a => a[Math.floor(Math.random() * a.length)];
+/* фраза після вправи: [текст, Томек, пріоритет]. 0 — мовчимо */
 function funPhrase(st, it){
-  if (inDeload() && st.type === 'weight') return [pick(FUN.deload), 'back'];
-  const es = entriesFor(st.en), l = es[es.length - 1]; if (!l) return [pick(FUN.first), 'first'];
+  if (inDeload() && st.type === 'weight') return [pick(FUN.deload), 'back', 1];
+  const es = entriesFor(st.en), l = es[es.length - 1]; if (!l) return [pick(FUN.first), 'first', 1];
   if (st.type === 'weight'){
     const mx = sets => Math.max(0, ...sets.filter(x => x.done).map(x => x.w || 0));
     const nowW = mx(it.sets), wasW = mx(l.it.sets), ever = Math.max(...es.map(e => mx(e.it.sets)));
     const mile = MILES.filter(m => m > ever && m <= nowW).pop();
-    if (mile) return [`Перші ${mile} кг! ${pick(FUN.milestone)}`, 'ogo'];
-    if (wasW > 0 && nowW >= wasW * 1.1 && nowW - wasW >= 2 * st.step) return [pick(FUN.wow), 'ogo'];
-    if (es.length >= 2){ const w2 = mx(es[es.length - 2].it.sets); if (w2 > 0 && wasW > w2 && nowW > wasW) return [pick(FUN.streak), 'smug']; }
+    if (mile) return [`Перші ${mile} кг! ${pick(FUN.milestone)}`, 'ogo', 5];
+    if (wasW > 0 && nowW >= wasW * 1.1 && nowW - wasW >= 2 * st.step) return [pick(FUN.wow), 'ogo', 4];
+    if (es.length >= 2){ const w2 = mx(es[es.length - 2].it.sets); if (w2 > 0 && wasW > w2 && nowW > wasW) return [pick(FUN.streak), 'smug', 3]; }
   }
   const sc = sets => sets.filter(x => x.done).reduce((a, x) => a + (st.type === 'weight' ? (x.w || 0) * (x.r || 0) : (x.r || 0)), 0);
   const now = sc(it.sets), was = sc(l.it.sets);
-  return now > was * 1.005 ? [pick(FUN.up), 'smug'] : now < was * 0.995 ? [pick(FUN.down), 'shy'] : [pick(FUN.same), 'loaf'];
+  return now > was * 1.005 ? [pick(FUN.up), 'smug', 2] : now < was * 0.995 ? [pick(FUN.down), 'shy', 0] : [pick(FUN.same), 'loaf', 0];
 }
 function markDone(i){
   const A = S.active, id = A.queue[A.idx], st = effStep(A.day, id), it = A.items[id], s = it.sets[i];
   if (s.done){ s.done = false; save(); render(); return; }
-  if (st.type === 'weight' && s.w == null){ toast('Вкажи вагу'); return; }
-  if (s.r == null){ toast(st.unit === 'sec' ? 'Вкажи секунди' : st.unit === 'm' ? 'Вкажи метри' : 'Вкажи повтори'); return; }
+  const need = st.type === 'weight' && s.w == null ? 'w' : s.r == null ? 'r' : null;
+  if (need){ const el = app.querySelector(`.set input[data-i="${i}"][data-f="${need}"]`); if (el){ const box = el.closest('.step'); box.classList.remove('err'); void box.offsetWidth; box.classList.add('err'); el.focus(); } return; }
   s.done = true; s.at = Date.now();
   // наступні підходи підтягують вагу й повтори, якщо ще порожні
   for (let j = i + 1; j < it.sets.length; j++){ if (!it.sets[j].done){ if (it.sets[j].w == null) it.sets[j].w = s.w; if (it.sets[j].r == null) it.sets[j].r = s.r; } }
   // рекорд
   if (st.type === 'weight' && st.unit === 'reps'){
-    const b = bestFor(st.en);
+    const b = entriesFor(st.en).length >= 2 ? bestFor(st.en) : null;
     if (b && (s.w > b.w || (s.w === b.w && s.r > b.r)) && !A.prs.some(p => p.en === st.en && (p.w > s.w || (p.w === s.w && p.r >= s.r)))){
       A.prs = A.prs.filter(p => p.en !== st.en); A.prs.push({en: st.en, w: s.w, r: s.r});
       const nxt = st.max && s.r >= st.max ? ` · далі ${fmt(s.w + st.step)} кг` : '';
-      say(pick(FUN.pr), 'pr', `${esc(nm(st.en))} · ${fmt(s.w)} кг × ${fmt(s.r)}${nxt}`, 'proud');
+      if (funAllowed(9, true)){ funShown(true); say(pick(FUN.pr), 'pr', `${esc(nm(st.en))} · ${fmt(s.w)} кг × ${fmt(s.r)}${nxt}`, 'proud'); }
     }
   }
   const allDone = it.sets.every(x => x.done);
   if (!allDone){ A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; }
   else if (st.kind === 'warm'){ A.restEnd = null; }
-  else { A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; if (!A.prs.some(p => p.en === st.en)){ const [ph, tt] = funPhrase(st, it); say(ph, 'fun', '', tt); } }
+  else { A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; A.tb = A.tb || {n: 0, pr: 0, at: -9, first: false, ex: 0}; A.tb.ex++;
+    if (!A.prs.some(p => p.en === st.en)){ const [ph, tt, pr] = funPhrase(st, it); if (funAllowed(pr, false)){ funShown(false); say(ph, 'fun', '', tt); } } }
   save(); render();
 }
 
@@ -616,15 +633,15 @@ let lastFinished = null;
 function finishWorkout(){
   const A = S.active; if (!A) return;
   const items = A.queue.map(id => { const st = effStep(A.day, id), x = A.items[id]; return x ? {en: st.en, kind: st.kind, type: st.type, unit: st.unit, side: !!st.side, alt: !!st.isAlt, feel: x.feel || null, sets: x.sets.filter(s => s.done).map(s => ({w: s.w ?? null, r: s.r ?? null, done: true}))} : null; }).filter(x => x && x.sets.length);
-  let ups = 0;
-  items.forEach(it => { if (it.type !== 'weight') return; const l = lastFor(it.en); if (l && l.it.sets[0] && it.sets[0] && it.sets[0].w > l.it.sets[0].w) ups++; });
+  let ups = 0, firsts = 0;
+  items.forEach(it => { if (it.kind === 'warm') return; const l = lastFor(it.en); if (!l){ firsts++; return; } if (it.type !== 'weight') return; if (l.it.sets[0] && it.sets[0] && it.sets[0].w > l.it.sets[0].w) ups++; });
   const rec = { id: 'w' + A.start, day: A.day, start: A.start, end: Date.now(), items, prs: A.prs, ups, tonnage: tonnageOf(items), sets: items.filter(it => it.kind !== 'warm').reduce((a, it) => a + it.sets.length, 0), mood: null, note: '', deload: !!inDeload() };
   if (!S.blockStart) S.blockStart = A.start;
   S.workouts.push(rec); S.active = null;
   const fresh = checkAch();
   save(); closeSheet(); releaseWake();
   const h = new Date().getHours();
-  lastFinished = { id: rec.id, fresh, phrase: (h >= 16 ? PHRASES_EVENING : PHRASES_DAY)[Math.floor(Math.random() * (h >= 16 ? PHRASES_EVENING : PHRASES_DAY).length)], evening: h >= 16 };
+  lastFinished = { id: rec.id, fresh, ups, firsts, phrase: (h >= 16 ? PHRASES_EVENING : PHRASES_DAY)[Math.floor(Math.random() * (h >= 16 ? PHRASES_EVENING : PHRASES_DAY).length)], evening: h >= 16 };
   go('finish'); confetti();
 }
 const SHAKE_SVG = `<svg class="shake" viewBox="0 0 120 120" aria-hidden="true"><path d="M70 6 L62 34" stroke="#ff7a59" stroke-width="5" stroke-linecap="round"/><path d="M30 34 H90 L82 108 Q81 114 75 114 H45 Q39 114 38 108 Z" fill="#f2f4f7"/><path d="M33 56 H87 L84 84 H36 Z" fill="#ffb59f"/><rect x="26" y="28" width="68" height="10" rx="5" fill="#ff7a59"/><circle cx="50" cy="70" r="3" fill="#fff"/><circle cx="66" cy="76" r="2" fill="#fff"/><path d="M48 96 q12 8 24 0" stroke="#2a2f38" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="50" cy="88" r="2.5" fill="#2a2f38"/><circle cx="70" cy="88" r="2.5" fill="#2a2f38"/></svg>`;
@@ -640,6 +657,7 @@ function finishScreen(){
       <div class="stat"><b>${w.prs.length}</b><span>${w.prs.length === 1 ? 'рекорд' : 'рекордів'}</span></div>
     </div>
     <p class="muted small" style="text-align:center;margin:-6px 0 12px">Піднято загалом: ${fmtInt(w.tonnage)} кг${f.evening ? ` · шейк №${shakes()}` : ''}</p>
+    ${f.ups || f.firsts ? `<div class="today">${f.ups ? `<span>${ic('chart')} Додала вагу: <b>${f.ups}</b> ${f.ups === 1 ? 'вправа' : f.ups < 5 ? 'вправи' : 'вправ'}</span>` : ''}${f.firsts ? `<span>${ic('pencil')} Нові точки відліку: <b>${f.firsts}</b></span>` : ''}</div>` : ''}
     ${w.prs.map(p => `<div class="newach"><span>${ic('trophy')}</span><div><b>${esc(nm(p.en))}</b><br><small class="muted">${fmt(p.w)} кг × ${fmt(p.r)}</small></div></div>`).join('')}
     ${f.fresh.map(id => { const a = achById(id); return `<div class="newach"><span>${ic(a[1])}</span><div><b>Нова ачівка!</b><br>${esc(a[2])}</div></div>`; }).join('')}
     <div class="card"><h3>Як пройшло?</h3>
@@ -819,6 +837,83 @@ async function certificate(){
   } catch(e){}
 }
 
+/* ---------- розумні фрази на заміри ---------- */
+/* ціль кожної людини: gain — набір м'язів ніг; keep — тримати вагу, верх тіла; loss — мінус жир */
+const GOALS = {p1: 'keep', p2: 'gain'};
+const LEGS = ['Leg press 45°','V-squat','Hip thrust','Romanian deadlift','Seated leg curl','Leg extension','Hip adduction','Hip abduction'];
+const UPPER = ['Chest press','Lat pulldown','T-bar row','Chest-supported row','Multi Fly lateral raise','Reverse pec deck','Pec deck fly','Cable lateral raise','Biceps curl machine','Triceps extension'];
+const CM = .45, KG = .28;   // крок 0,5 см / 0,3 кг (з запасом на округлення)
+const seedPick = (a, seed) => a[Math.abs([...String(seed)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)) % a.length];
+const fmtD = (v, u) => `${v > 0 ? '+' : '−'}${fmt(Math.round(Math.abs(v) * 10) / 10)} ${u}`;
+/* сила за період: середній приріст найбільшої ваги у вправах групи між двома датами */
+function strengthTrend(group, from, to){
+  const r = [];
+  group.forEach(en => {
+    const e = entriesFor(en).filter(x => !x.w.deload).map(x => ({t: x.w.start, w: Math.max(...x.it.sets.map(s => s.w || 0))})).filter(x => x.w > 0);
+    const before = e.filter(x => x.t <= from), after = e.filter(x => x.t > from && x.t <= to + 864e5);
+    if (before.length && after.length){ const b = before[before.length - 1].w, a = Math.max(...after.map(x => x.w)); if (b > 0) r.push(a / b - 1); }
+  });
+  return r.length ? r.reduce((a, x) => a + x, 0) / r.length : null;
+}
+function mInsight(){
+  const M = [...S.measurements].sort((a, b) => a.date.localeCompare(b.date)); const n = M.length; if (!n) return null;
+  const last = M[n - 1], seed = last.date + person, goal = GOALS[person] || 'keep';
+  if (n === 1) return {t: 'first', tom: 'first', h: 'Точка відліку є', p: 'Наступного тижня Томек уже порівнюватиме.'};
+  const avg = (arr, k) => { const v = arr.map(m => m[k]).filter(x => x != null); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null; };
+  const prev = M.slice(Math.max(0, n - 3), n - 1);           // до двох попередніх
+  const D = {}, T = {}, F = {};
+  ['weight','chest','biceps','waist','hips','thigh'].forEach(k => {
+    const p = avg(prev, k); D[k] = last[k] != null && p != null ? last[k] - p : 0;
+    const w = M.slice(Math.max(0, n - 4)), h = Math.floor(w.length / 2), a = avg(w.slice(0, h), k), b = avg(w.slice(h), k); T[k] = n >= 3 && a != null && b != null ? b - a : D[k];
+    const f = M.find(m => m[k] != null); F[k] = f && last[k] != null && f !== last ? last[k] - f[k] : 0;
+  });
+  // небажана зміна підтверджена: два заміри поспіль у той самий бік або ≥ 1 см / 0,6 кг
+  const p1 = M[n - 2], p2 = M[n - 3];
+  const twice = (k, sign) => p1 && p2 && last[k] != null && p1[k] != null && p2[k] != null && sign * (last[k] - p1[k]) > 0 && sign * (p1[k] - p2[k]) > 0;
+  const badW = (k, s, lim) => s * T[k] >= lim * 2 || (s * D[k] >= lim && twice(k, s));
+  const t0 = new Date(M[Math.max(0, n - 4)].date).getTime(), t1 = new Date(last.date).getTime();
+  const sLeg = strengthTrend(LEGS, t0, t1), sUp = strengthTrend(UPPER, t0, t1);
+  const legUp = sLeg != null && sLeg >= .04, upUp = sUp != null && sUp >= .04;
+  const legs = Math.max(T.thigh || 0, T.hips || 0), legK = (T.thigh || 0) >= (T.hips || 0) ? 'стегні' : 'стегнах';
+  const upper = Math.max(T.chest || 0, T.biceps || 0);
+  let r;
+  if (goal === 'gain'){
+    if (legs >= CM && T.waist <= .25) r = {t: 'good', tom: 'proud', h: seedPick([`${fmtD(legs, 'см')} у ${legK}, талія на місці`, `Ноги ростуть, талія тримається`], seed), p: legUp ? 'І сила в ногах росте. Томек підтверджує: це мʼязи.' : 'Саме так виглядає набір мʼязів.'};
+    else if (legs >= CM && T.waist <= legs * .5) r = {t: 'good', tom: 'smug', h: `${fmtD(legs, 'см')} у ${legK}`, p: 'Талія трохи підросла, але повільніше за ноги. Нормальний набір.'};
+    else if (legs > 0 && T.waist >= CM && T.waist >= legs) r = legUp ? {t: 'meh', tom: 'loaf', h: 'Росте все, разом із талією', p: 'Сила росте, тож частина — мʼязи. Але темп трохи завеликий.'}
+      : {t: 'meh', tom: 'inspector', h: 'Росте все, разом із талією', p: 'Схоже, з будівельним матеріалом перебір. Томек пропонує трохи менше літерки «В».'};
+    else if (Math.abs(legs) < CM && legUp) r = {t: 'ok', tom: 'smug', h: 'Сила в ногах росте', p: 'Сантиметри наздоженуть: мʼязи спершу міцніють, потім ростуть.'};
+    else if (legs <= -CM * 2 || badW('weight', -1, KG)) r = {t: 'meh', tom: 'shake', h: 'Мінус у вазі', p: 'Мʼязам потрібне будівельне. Томек радить перекус — і шейк.'};
+    else if (D.weight >= KG && D.waist < CM) r = {t: 'good', tom: 'smug', h: `${fmtD(D.weight, 'кг')} без талії`, p: 'Набір у правильний бік.'};
+  } else if (goal === 'loss'){
+    if (T.weight <= -KG && T.waist <= -CM) r = {t: 'good', tom: 'proud', h: `${fmtD(T.waist, 'см')} у талії і ${fmtD(T.weight, 'кг')}`, p: 'Ідеальний тиждень. Томек шукає тобі пасок на дірочку менший.'};
+    else if (Math.abs(T.weight) < KG && T.waist <= -CM) r = {t: 'good', tom: 'proud', h: `Вага та сама, а талія ${fmtD(T.waist, 'см')}`, p: 'Жир іде, мʼязи приходять. Найкраща новина.'};
+    else if (D.waist <= -CM) r = {t: 'good', tom: 'smug', h: `${fmtD(D.waist, 'см')} у талії`, p: seedPick(['Мінус сантиметр — це вже видно в дзеркалі.','Сантиметр за сантиметром. Томек аплодує.'], seed)};
+    else if (D.weight <= -KG) r = {t: 'good', tom: 'smug', h: `${fmtD(D.weight, 'кг')}`, p: seedPick(['Пів кіло — як пачка масла. Тільки краще: її більше немає.','Стрілка вагів рушила. Так тримати.'], seed)};
+    else if (D.weight >= KG && D.waist <= -CM) r = {t: 'ok', tom: 'loaf', h: 'Вага вгору, талія вниз', p: 'Це мʼязи або вода. Не страшно.'};
+    else if (badW('weight', 1, KG) && T.waist >= 0) r = {t: 'meh', tom: 'inspector', h: 'Вага росте другий тиждень', p: 'Схоже, літерка «В» трохи розгулялась. Томек не судить — Томек спостерігає.'};
+    else if (D.weight >= KG) r = {t: 'ok', tom: 'loaf', h: `${fmtD(D.weight, 'кг')}`, p: 'Буває: вода, сіль, гормони. Дивимось на наступний тиждень.'};
+  } else {
+    if (upper >= CM && T.waist <= .25) r = {t: 'good', tom: 'proud', h: `${fmtD(upper, 'см')} у ${(T.biceps || 0) >= (T.chest || 0) ? 'біцепсі' : 'грудях'}`, p: upUp ? 'Верх росте, талія на місці, сила теж. Класика рекомпозиції.' : 'Верх росте, талія на місці. Класика рекомпозиції.'};
+    else if (upper >= CM && badW('waist', 1, CM)) r = {t: 'meh', tom: 'inspector', h: 'Росте все, разом із талією', p: 'Трохи стежимо за літеркою «В».'};
+    else if (T.waist <= -CM && Math.abs(T.weight) < KG * 2) r = {t: 'good', tom: 'smug', h: `${fmtD(T.waist, 'см')} у талії`, p: 'Підсушуєшся при тій самій вазі. Чудово.'};
+    else if (D.biceps >= CM || D.chest >= CM) r = {t: 'good', tom: 'smug', h: `${fmtD(Math.max(D.biceps, D.chest), 'см')} у ${D.biceps >= D.chest ? 'біцепсі' : 'грудях'}`, p: 'Плечі й спина працюють не дарма.'};
+    else if (badW('waist', 1, CM)) r = {t: 'meh', tom: 'inspector', h: 'Талія підросла', p: 'Два заміри поспіль. Трохи стежимо за літеркою «В».'};
+  }
+  if (!r) r = {t: 'ok', tom: 'loaf', h: seedPick(['Стабільно','Тримаєш форму','Без різких рухів'], seed), p: 'Коливання до 0,5 — це вода й сніданок. Дивись на тенденцію за 3–4 тижні.'};
+  // накопичене від старту — у добрий бік для цієї цілі
+  const good = goal === 'gain' ? [['thigh', 1, 'стегно'], ['hips', 1, 'стегна'], ['weight', 1, 'вага']] : goal === 'loss' ? [['waist', -1, 'талія'], ['weight', -1, 'вага'], ['hips', -1, 'стегна']] : [['biceps', 1, 'біцепс'], ['chest', 1, 'груди'], ['waist', -1, 'талія']];
+  const best = good.map(([k, s, l]) => ({k, l, v: F[k], ok: s * F[k] >= (k === 'weight' ? .5 : 1)})).filter(x => x.ok);
+  if (best.length) r.start = `Від першого заміру: ${best.map(x => `${x.l} ${fmtD(x.v, x.k === 'weight' ? 'кг' : 'см')}`).join(', ')}`;
+  return r;
+}
+/* добрий напрямок заміру для цілі людини: 1 — ріст добре, −1 — зменшення добре, 0 — байдуже */
+const mDir = k => ({gain: {weight: 1, thigh: 1, hips: 1, waist: -1}, keep: {chest: 1, biceps: 1, waist: -1}, loss: {weight: -1, waist: -1, hips: -1, thigh: -1, chest: -1}}[GOALS[person] || 'keep'][k] || 0);
+function mInsightCard(){
+  const r = mInsight(); if (!r) return '';
+  return `<div class="minsight ${r.t}">${tom(r.tom, 'tomins')}<div><b>${esc(r.h)}</b><p>${esc(r.p)}</p>${r.start ? `<small>${esc(r.start)}</small>` : ''}</div></div>`;
+}
+
 /* ---------- заміри ---------- */
 const MF = [['weight','Вага','кг'],['chest','Груди','см'],['biceps','Біцепс','см'],['waist','Талія','см'],['hips','Стегна (обхват)','см'],['thigh','Стегно','см']];
 function measureScreen(){
@@ -828,9 +923,10 @@ function measureScreen(){
   const mf = MF.find(f => f[0] === mKey);
   return `<div class="top"><h1>Заміри</h1>${gear()}</div>
     <button class="big" data-act="addm">${ic('plus')} Додати заміри</button>
+    ${last ? mInsightCard() : ''}
     ${last ? `<div class="card" style="margin-top:12px"><h3>Останні · ${dShort(new Date(last.date).getTime())}</h3>
       ${MF.map(([k, l, u]) => { const v = last[k], p = prev ? prev[k] : null; const dlt = v != null && p != null ? v - p : null;
-        return `<div class="mrow"><span>${l}</span><span>${p != null && v != null ? `${fmt(p)} → ` : ''}<b>${fmt(v)}</b> ${u}${dlt ? ` <span class="${dlt < 0 ? 'dn' : 'upc'}">${dlt > 0 ? '↑' : '↓'}${fmt(Math.abs(dlt))}</span>` : ''}</span></div>`; }).join('')}</div>
+        return `<div class="mrow"><span>${l}</span><span>${p != null && v != null ? `${fmt(p)} → ` : ''}<b>${fmt(v)}</b> ${u}${dlt ? ` <span class="${mDir(k) * dlt > 0 ? 'dn' : mDir(k) * dlt < 0 ? 'upc' : 'muted'}">${dlt > 0 ? '↑' : '↓'}${fmt(Math.abs(dlt))}</span>` : ''}</span></div>`; }).join('')}</div>
       <div class="card"><h3>Графік</h3><select data-act="mkey" aria-label="Замір">${MF.map(([k, l]) => `<option value="${k}" ${k === mKey ? 'selected' : ''}>${l}</option>`).join('')}</select>${lineChart(pts, mf[1] + ', ' + mf[2])}
       <p class="muted small" style="margin-top:6px">Дивись на тенденцію за 3–4 тижні, а не на різницю між двома тижнями.</p></div>
       <div class="card"><h3>Усі записи</h3><p class="muted small" style="margin:-4px 0 6px">Натисни на запис, щоб змінити.</p>${[...M].reverse().map(m => `<button class="mitem" data-act="editm" data-date="${m.date}"><span>${dShort(new Date(m.date).getTime())}</span><span class="small muted">${MF.filter(([k]) => m[k] != null).map(([k]) => fmt(m[k])).join(' · ')}</span>${ic('right')}</button>`).join('')}</div>`
@@ -853,6 +949,8 @@ function settingsSheet(){
   openSheet(`<h2>Налаштування</h2>
     <p>Тривалість тренування</p>
     <div class="seg" role="group" aria-label="Тривалість">${[90, 75].map(v => `<button data-dur="${v}" aria-pressed="${s.duration === v}">${v} хв</button>`).join('')}</div>
+    <p style="margin-top:14px">Фрази Томека під час тренування</p>
+    <div class="seg" role="group" aria-label="Фрази">${[['often','Часто'],['normal','Помірно'],['pr','Лише рекорди']].map(([k, l]) => `<button data-fun="${k}" aria-pressed="${(s.fun || 'normal') === k}">${l}</button>`).join('')}</div>
     <p style="margin-top:14px">Тема</p>
     <div class="themes">${THEMES.map(([k, l, bg, ac]) => `<button data-theme="${k}" aria-pressed="${curTheme() === k}" style="background:${bg};color:${ac}"><i><b style="background:${ac}"></b><b style="background:${bg};outline:1px solid ${ac}"></b></i>${l}</button>`).join('')}</div>
     <p style="margin-top:14px">Відпочинок між підходами</p>
@@ -916,6 +1014,7 @@ document.addEventListener('click', e => {
   if (d.mood){ const w = S.workouts.find(x => x.id === lastFinished.id); if (w){ w.mood = d.mood; save(); app.querySelectorAll('[data-mood]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mood === d.mood)); } return; }
   if (d.feel && S.active){ const it = S.active.items[S.active.queue[S.active.idx]]; it.feel = it.feel === d.feel ? null : d.feel; save(); render(); return; }
   if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(tom('proud'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
+  if (d.fun){ S.settings.fun = d.fun; save(); settingsSheet(); return; }
   if (d.theme){ LS.set('trn:theme', d.theme); applyTheme(); settingsSheet(); return; }
   if (d.dur){ S.settings.duration = +d.dur; S.settings.durTouched = true; save(); settingsSheet(); render(); return; }
   if (d.rest){ const [k, v] = d.rest.split(':'); S.settings[k] = +v; save(); settingsSheet(); return; }
@@ -954,7 +1053,7 @@ document.addEventListener('click', e => {
     case 'docancel': S.active = null; save(); closeSheet(); releaseWake(); go('today'); break;
     case 'savefin': { const w = S.workouts.find(x => x.id === lastFinished.id); const n = document.getElementById('wnote'); if (w && n){ w.note = n.value.trim(); save(); } toast('Збережено ✓'); go('today'); break; }
     case 'delw': openSheet(`<h2>Видалити тренування?</h2><p>Це не можна скасувати.</p><div class="opts"><button data-act="dodelw" data-id="${d.id}">${ic('trash')} Видалити</button><button data-act="closesheet">Ні</button></div>`); break;
-    case 'dodelw': { const gone = S.workouts.find(w => w.id === d.id); S.workouts = S.workouts.filter(w => w.id !== d.id); undoBuf = {kind: 'w', item: gone, ach: Object.assign({}, S.ach)}; const lostW = recheckAch(); save(); closeSheet(); render(); toast(`Тренування видалено${lostW.length ? ` · ачівок знято: ${lostW.length}` : ''} <button class="undo" data-act="undo">Повернути</button>`, '', 6000); break; }
+    case 'dodelw': { const gone = S.workouts.find(w => w.id === d.id); S.workouts = S.workouts.filter(w => w.id !== d.id); undoBuf = {kind: 'w', item: gone, ach: Object.assign({}, S.ach)}; const lostW = recheckAch(); save(); closeSheet(); render(); toast(`Тренування видалено${lostW.length ? ` · ачівок знято: ${lostW.length}` : ''} <button class="undo" data-act="undo">Повернути</button>`, '', 7000); break; }
     case 'addm': addMeasureSheet(); break;
     case 'savem': {
       const date = document.getElementById('mdate').value || iso(new Date()); const m = {date};
@@ -962,11 +1061,11 @@ document.addEventListener('click', e => {
       if (!any){ toast('Заповни хоча б одне поле'); break; }
       S.measurements = S.measurements.filter(x => x.date !== date && x.date !== d.orig); S.measurements.push(m);
       const fresh = checkAch(); save(); closeSheet(); render();
-      if (fresh.length) sayIco(tom('proud'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else toast('Заміри збережено ✓'); break; }
+      window.scrollTo(0, 0); if (fresh.length) sayIco(tom('proud'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else toast('Заміри збережено ✓'); break; }
     case 'editm': addMeasureSheet(d.date); break;
     case 'delm': { if (!t.classList.contains('armed')){ t.classList.add('armed'); t.innerHTML = `${ic('trash')} Точно видалити? Натисни ще раз`; break; }
       const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone, ach: Object.assign({}, S.ach)}; recheckAch(); save(); closeSheet(); render();
-      toast(`Запис видалено <button class="undo" data-act="undo">Повернути</button>`, '', 6000); break; }
+      toast(`Запис видалено <button class="undo" data-act="undo">Повернути</button>`, '', 7000); break; }
     case 'undo': if (undoBuf){ if (undoBuf.kind === 'm') S.measurements.push(undoBuf.item); if (undoBuf.kind === 'w'){ S.workouts.push(undoBuf.item); S.workouts.sort((a, b) => a.start - b.start); } if (undoBuf.ach) S.ach = undoBuf.ach; undoBuf = null; save(); render(); toast('Повернуто ✓'); } break;
     case 'editw': editWorkoutSheet(d.id); break;
     case 'saveew': { const w = S.workouts.find(x => x.id === d.id); if (!w) break;

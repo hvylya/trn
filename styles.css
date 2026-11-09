@@ -342,3 +342,19 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 .hitem .ic{width:16px; height:16px; vertical-align:-3px}
 .clock b .ic{width:18px; height:18px; vertical-align:-3px}
 .empty .tom{margin-bottom:12px}
+
+/* заміри: картка Томека */
+.minsight{display:flex; gap:12px; align-items:center; margin-top:12px; padding:12px 14px; border-radius:16px; background:var(--surface); border:1px solid var(--line)}
+.minsight.good{background:color-mix(in srgb,var(--ok) 14%, var(--surface)); border-color:color-mix(in srgb,var(--ok) 40%, transparent)}
+.minsight.meh{background:color-mix(in srgb,var(--warn) 12%, var(--surface)); border-color:color-mix(in srgb,var(--warn) 35%, transparent)}
+.minsight b{font-size:17px}
+.minsight p{margin-top:2px; font-size:15px; line-height:1.4}
+.minsight small{display:block; margin-top:6px; color:var(--muted); font-size:13px}
+.tomins{width:76px; flex:none}
+/* завершення: «Сьогодні» */
+.today{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:-4px 0 12px}
+.today span{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:var(--surface2); font-size:14px}
+.today .ic{width:16px; height:16px}
+/* поле без значення */
+.step.err{outline:2px solid var(--warn); border-radius:12px; animation:shake .35s}
+@keyframes shake{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
