@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.6.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -44,8 +44,10 @@ const IP = {
   pencil:'<path d="M4 20h4L19.5 8.5l-4-4L4 16z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   play:'<path d="M8 5.5v13l10.5-6.5z"/>',
+  gear:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
   timer:'<circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.5 2M9.5 2.5h5"/>'
 };
+const gear = () => `<button class="iconbtn" data-act="settings" aria-label="Налаштування">${ic('gear')}</button>`;
 const ic = (n, cls) => `<svg class="ic ${cls || ''}" viewBox="0 0 24 24" aria-hidden="true">${IP[n]}</svg>`;
 
 /* ---------- сховище ---------- */
@@ -67,6 +69,8 @@ applyTheme();
 /* ---------- програма ---------- */
 const plan = day => P.days.find(d => d.key === day)[person];
 const lib = en => P.lib[en] || {};
+const nm = en => (P.names && P.names[en]) || en;
+const enm = en => lib(en).enName || en;
 const stepById = (day, id) => plan(day).find(s => s.id === id);
 const who = () => P.people[person];
 
@@ -75,9 +79,27 @@ let screen = 'today', tab = 'today', selDay = null, histOpen = null, chartEx = n
 function go(s){ screen = s; if (['today','home','history','progress','measure'].includes(s)) tab = s; render(); window.scrollTo(0, 0); }
 
 function toast(html, cls, ms){
-  toastEl.className = cls || ''; toastEl.innerHTML = html; toastEl.hidden = false;
-  clearTimeout(toast.t); toast.t = setTimeout(() => { toastEl.hidden = true; }, ms || (cls === 'pr' ? 3600 : 2400));
+  ms = ms || (cls === 'pr' || cls === 'fun' ? 4500 : 2600);
+  const n = toast.n = (toast.n || 0) + 1;
+  toastEl.innerHTML = `<div class="tcard ${cls || ''}">${html}<i class="tbar" style="animation-duration:${ms}ms"></i></div>`;
+  toastEl.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => hideToast(n), ms);
 }
+function hideToast(n){
+  if (n != null && n !== toast.n) return;
+  const c = toastEl.firstElementChild; if (!c){ toastEl.hidden = true; return; }
+  c.classList.add('out'); const k = toast.n; setTimeout(() => { if (k === toast.n){ toastEl.hidden = true; toastEl.innerHTML = ''; } }, 180);
+}
+/* фраза з емодзі в кінці → емодзі окремо зліва (місце для котика) */
+const EMO = /\s*(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*)\s*$/u;
+function sayIco(ico, title, sub, cls){ toast(`${ico ? `<span class="tico">${ico}</span>` : ''}<span class="tt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</span>`, cls || 'fun'); }
+function say(text, cls, sub){ const m = text.match(EMO); sayIco(m ? m[1] : '', esc(m ? text.slice(0, m.index) : text), sub, cls); }
+toastEl.addEventListener('click', e => { if (!e.target.closest('button')) { clearTimeout(toast.t); hideToast(); } });
+(function(){ let x0 = null, y0 = 0, dx = 0, dy = 0;
+  toastEl.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = dy = 0; }, {passive: true});
+  toastEl.addEventListener('touchmove', e => { if (x0 == null) return; dx = e.touches[0].clientX - x0; dy = e.touches[0].clientY - y0; const c = toastEl.firstElementChild; if (c) c.style.transform = `translate(${dx}px, ${Math.max(0, dy)}px)`; }, {passive: true});
+  toastEl.addEventListener('touchend', () => { if (x0 == null) return; const c = toastEl.firstElementChild; if (Math.abs(dx) > 60 || dy > 30){ clearTimeout(toast.t); hideToast(); } else if (c) c.style.transform = ''; x0 = null; });
+})();
 function openSheet(html){
   sheetEl.innerHTML = `<div class="sh" role="dialog" aria-modal="true"><div class="grab" aria-hidden="true"></div><button class="shx" data-act="closesheet" aria-label="Закрити">${ic('x')}</button>${html}</div>`;
   sheetEl.hidden = false;
@@ -192,6 +214,7 @@ const ACH = [
   ['m1','📏','Перші заміри', s => s.measurements.length >= 1],
   ['neck7','🦒','Шия 7 днів поспіль', s => homeStreak('neck') >= 7, 'p1'],
   ['calf10','🦵','Ікри вдома 10 разів', s => homeCount('calf') >= 10],
+  ['bal10','🦩','Фламінго: баланс 10 разів', s => homeCount('balance') >= 10, 'p2'],
   ['m4','📐','Заміри 4 тижні поспіль', s => { const ws = new Set(s.measurements.map(m => weekStart(new Date(m.date).getTime()))); let k = weekStart(Date.now()), n = 0; if (!ws.has(k)) k = weekStart(k - 3 * 864e5); while (ws.has(k)){ n++; k = weekStart(k - 3 * 864e5); } return n >= 4; }]
 ];
 const achList = () => ACH.filter(a => !a[4] || a[4] === person);
@@ -223,7 +246,7 @@ function todayScreen(){
   const bw = blockWeek();
   const backupOld = S.workouts.length >= 3 && (!S.lastBackup || Date.now() - S.lastBackup > 30 * 864e5);
   const names = steps.filter(s => s.kind === 'main').map(s => s.en);
-  return `<div class="top"><h1>Привіт, ${esc(who())}</h1><button class="iconbtn" data-act="settings" aria-label="Налаштування">${ic('sliders')}</button></div>
+  return `<div class="top"><h1>Привіт, ${esc(who())}</h1>${gear()}</div>
     <div class="row wrap" style="margin-bottom:14px">
       <span class="pill">${bw <= blockLen() ? `Тиждень ${bw} з ${blockLen()}` : 'Блок завершено 🎓'}</span>
       <span class="pill">🔥 Серія: ${streak} ${streak === 1 ? 'тиждень' : streak >= 2 && streak <= 4 ? 'тижні' : 'тижнів'}${si.frozen ? ' · ❄️' : ''}</span>
@@ -237,7 +260,7 @@ function todayScreen(){
         <div class="seg" role="group" aria-label="День">${DAY_ORDER.map(k => `<button data-day="${k}" aria-pressed="${k === day}">${DAY_TAB[k]}</button>`).join('')}</div>
       </div>
       <p class="muted small" style="margin-top:4px">${steps.length} вправ · ~${est} хв · ${S.settings.duration} хв у залі</p>
-      <ul class="preview">${names.map(n => `<li><b>${esc(n)}</b> · ${esc(lib(n).ua || '')}</li>`).join('')}</ul>
+      <ul class="preview">${names.map(n => `<li>${esc(nm(n))}</li>`).join('')}</ul>
       <button class="big" data-act="start" data-dayv="${day}">${S.active ? `${ic('play')} ПРОДОВЖИТИ${cont}` : `${ic('play')} ПОЧАТИ ТРЕНУВАННЯ`}</button>
       <div class="dots">${DAY_ORDER.map(k => `<span class="dot ${thisWeek.has(k) ? 'done' : ''}"><i></i>${DAY_TAB[k]}</span>`).join('')}<span class="dot" style="margin-left:auto">цей тиждень</span></div>
     </div>
@@ -260,8 +283,10 @@ function bannersHtml(bw){
 function startWorkout(day){
   if (!S.active){
     const q = plan(day).map(s => s.id);
+    const lastW = S.workouts[S.workouts.length - 1];
     S.active = { day, start: Date.now(), queue: q, idx: 0, items: {}, overAsked: false, prs: [], ups: 0, restEnd: null, restTotal: 0 };
     save();
+    if (lastW && Date.now() - lastW.end > 10 * 864e5) setTimeout(() => say(pick(FUN.comeback), 'fun'), 500);
   }
   requestWake();
   go('workout');
@@ -306,10 +331,11 @@ function techHtml(en){
   const figure = ph ? `<div class="tpair"><button class="tphoto" data-act="zoom" data-src="${ph}" aria-label="Фото тренажера"><img src="${ph}" alt="Тренажер"></button>${figure0}</div>` : figure0;
   const pers = t[person] ? `<p class="pers"><b>${esc(who())}:</b> ${esc(t[person])}</p>` : '';
   return `<div class="tech">${figure}
-    <h5>Як працює</h5><p>${esc(t.how)}</p>
-    ${t.why ? `<h5>Що дає</h5><p>${esc(t.why)}</p>` : ''}
-    <h5>Техніка</h5><ol>${t.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
-    <h5>Тіпс</h5><ul>${t.tips.map(x => `<li>${esc(x)}</li>`).join('')}</ul>${pers}</div>`;
+    <p class="tfocus"><b>Фокус:</b> ${esc(t.focus)}</p>
+    <ol>${t.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+    ${t.tips && t.tips.length ? `<ul class="ttips">${t.tips.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    ${t.fun ? `<p class="tfun">${esc(t.fun)}</p>` : ''}${pers}
+    ${t.why ? `<p class="twhy"><b>Що дає:</b> ${esc(t.why)}</p>` : ''}</div>`;
 }
 let techOpen = false;
 function stepper(i, field, val, unit, stepv){
@@ -345,12 +371,12 @@ function workoutScreen(){
   const nextIsExtra = !isLast && effStep(A.day, A.queue[A.idx + 1]).kind === 'extra' && st.kind !== 'extra';
   return `<div class="wtop"><button class="iconbtn wide" data-act="minimize" aria-label="Згорнути тренування">${ic('down')}<span>Згорнути</span></button><button class="iconbtn" data-act="queue" aria-label="Усі вправи">${ic('list')}</button>
       <span class="muted">${A.idx + 1}/${A.queue.length}</span>
-      <div class="clock" id="clock"></div></div>
+      <div class="clock" id="clock"></div>${gear()}</div>
     <div class="progress"><i style="width:${pct}%"></i></div>
     <div class="card">
       <div class="kindtag ${st.kind === 'extra' ? 'extra' : ''}">${kindLbl}${st.isAlt ? ' · заміна' : ''}${inDeload() && st.type === 'weight' ? ' · легкий тиждень −25%' : ''}</div>
-      <div class="exhead"><div class="grow"><h1 class="exname">${esc(st.en)}</h1>
-      <p class="exua">${esc(st.ua || L.ua || '')}</p>
+      <div class="exhead"><div class="grow"><h1 class="exname">${esc(nm(st.en))}</h1>
+      <p class="exua" lang="en">${esc(enm(st.en))}</p>
       ${L.mach ? `<p class="mach">${esc(L.mach)}</p>` : ''}</div>${thumb(st.en)}</div>
       ${S.mnotes[st.en] ? `<button class="mnote" data-act="mnote">${ic('tool')} ${esc(S.mnotes[st.en])}</button>` : ''}
       ${st.note ? `<p class="note">${esc(st.note)}</p>` : ''}
@@ -380,7 +406,7 @@ function warmHint(){
   let w = up != null ? up : l && l.it.sets[0] ? l.it.sets[0].w : null;
   if (w != null && inDeload()) w = w * 0.75;
   const half = w ? Math.max(f.step, Math.round(w * 0.5 / f.step) * f.step) : null;
-  return `<div class="last">Перша вправа: <b>${esc(f.en)}</b>.<br>${half ? `Розминковий підхід: <b>≈ ${fmt(half)} кг × 8</b> — половина від ${fmt(w)} кг.` : 'Розминковий підхід: ≈ половина робочої ваги × 8.'}</div>`;
+  return `<div class="last">Перша вправа: <b>${esc(nm(f.en))}</b>.<br>${half ? `Розминковий підхід: <b>≈ ${fmt(half)} кг × 8</b> — половина від ${fmt(w)} кг.` : 'Розминковий підхід: ≈ половина робочої ваги × 8.'}</div>`;
 }
 function feelHtml(st, it){
   if (st.type !== 'weight' || st.kind === 'warm' || !it.sets.length || !it.sets.every(s => s.done)) return '';
@@ -447,16 +473,30 @@ function restFor(st){
   return S.settings.restIso;
 }
 const FUN = {
-  up: ['Сильніше, ніж минулого разу 💪','Прогрес видно неозброєним оком 👀','Минула ти була б вражена 😎','Мʼязи записали це в щоденник 📈','Оце так! Плюс до минулого разу 🚀'],
-  same: ['Стабільно, як швейцарський годинник ⌚','Стабільність — теж сила 🧱','Тримаєш планку. Буквально 😄','Рівно як минулого разу — база тримається 🧘'],
-  down: ['Сьогодні гравітація сильніша, ніж зазвичай 🌍','Не день рекордів — день характеру 😌','Навіть Місяць має фази 🌙 Наступного разу надолужиш','Легший день — теж тренування. Шейк не скасовується 🥤','Мʼязи сьогодні в режимі енергозбереження 🔋 Буває!'],
+  up: ['Сильніше, ніж минулого разу 💪','Прогрес видно неозброєним оком 👀','Минула ти була б вражена 😎','Мʼязи записали це в щоденник 📈','Оце так! Плюс до минулого разу 🚀','Минула ти аплодує стоячи 👏','Мʼязи кажуть «дякую» 💌'],
+  same: ['Стабільно, як швейцарський годинник ⌚','Стабільність — теж сила 🧱','Тримаєш планку. Буквально 😄','Рівно як минулого разу — база тримається 🧘','Тримаєш рівень — це теж робота 💼'],
+  down: ['Сьогодні гравітація сильніша, ніж зазвичай 🌍','Не день рекордів — день характеру 😌','Навіть Місяць має фази 🌙','Легший день — теж тренування. Шейк не скасовується 🥤','Мʼязи сьогодні в режимі енергозбереження 🔋','Головне — прийшла. Решта наздожене 🐢'],
   first: ['Перший раз — є точка відліку ✍️','Записано! Тепер буде з чим порівнювати 📒'],
-  deload: ['Легкий тиждень — так і задумано 🪶','Відновлення — це теж частина прогресу 🌿']
+  deload: ['Легкий тиждень — так і задумано 🪶','Відновлення — теж частина прогресу 🌿'],
+  wow: ['Ого, ти сильна! 💪','Це що зараз було? Сила! ⚡','Тренажер такого не чекав 😮','Хтось сьогодні снідав залізом 🍳','Ого! Плюс одразу видно 🚀'],
+  streak: ['Третій раз поспіль більше — ти розганяєшся 🚂','Прогрес без вихідних 📈','Вага росте, як тісто на дріжджах 🥐','Хто тебе зупинить? Явно не цей тренажер 😎'],
+  milestone: ['Ого, ти сильна! 💪','Записуємо в історію 📜','Залізо тебе поважає 🏋️','Новий рівень відкрито 🔓'],
+  pr: ['Новий рекорд! 🏆','Ого, ти сильна! 🏆','Рекорд! Залізо в шоці 🏆','Оце потужно! Новий рекорд 🏆'],
+  comeback: ['З поверненням! Мʼязи все памʼятають 🧠','Ти повернулась — це головне 🙌','Почнемо мʼякенько, тіло швидко згадає 🌱']
 };
+const MILES = [20,25,30,40,50,60,70,80,90,100,110,120,140,160,180,200];
 const pick = a => a[Math.floor(Math.random() * a.length)];
 function funPhrase(st, it){
   if (inDeload() && st.type === 'weight') return pick(FUN.deload);
-  const l = lastFor(st.en); if (!l) return pick(FUN.first);
+  const es = entriesFor(st.en), l = es[es.length - 1]; if (!l) return pick(FUN.first);
+  if (st.type === 'weight'){
+    const mx = sets => Math.max(0, ...sets.filter(x => x.done).map(x => x.w || 0));
+    const nowW = mx(it.sets), wasW = mx(l.it.sets), ever = Math.max(...es.map(e => mx(e.it.sets)));
+    const mile = MILES.filter(m => m > ever && m <= nowW).pop();
+    if (mile) return `Перші ${mile} кг! ${pick(FUN.milestone)}`;
+    if (wasW > 0 && nowW >= wasW * 1.1 && nowW - wasW >= 2 * st.step) return pick(FUN.wow);
+    if (es.length >= 2){ const w2 = mx(es[es.length - 2].it.sets); if (w2 > 0 && wasW > w2 && nowW > wasW) return pick(FUN.streak); }
+  }
   const sc = sets => sets.filter(x => x.done).reduce((a, x) => a + (st.type === 'weight' ? (x.w || 0) * (x.r || 0) : (x.r || 0)), 0);
   const now = sc(it.sets), was = sc(l.it.sets);
   return now > was * 1.005 ? pick(FUN.up) : now < was * 0.995 ? pick(FUN.down) : pick(FUN.same);
@@ -474,14 +514,14 @@ function markDone(i){
     const b = bestFor(st.en);
     if (b && (s.w > b.w || (s.w === b.w && s.r > b.r)) && !A.prs.some(p => p.en === st.en && (p.w > s.w || (p.w === s.w && p.r >= s.r)))){
       A.prs = A.prs.filter(p => p.en !== st.en); A.prs.push({en: st.en, w: s.w, r: s.r});
-      const nxt = st.max && s.r >= st.max ? `<br><small>Наступного разу: ${fmt(s.w + st.step)} кг</small>` : '';
-      toast(`🏆 Новий рекорд!<br>${esc(st.en)} ${fmt(s.w)} кг × ${fmt(s.r)}${nxt}`, 'pr');
+      const nxt = st.max && s.r >= st.max ? ` · далі ${fmt(s.w + st.step)} кг` : '';
+      say(pick(FUN.pr), 'pr', `${esc(nm(st.en))} · ${fmt(s.w)} кг × ${fmt(s.r)}${nxt}`);
     }
   }
   const allDone = it.sets.every(x => x.done);
   if (!allDone){ A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; }
   else if (st.kind === 'warm'){ A.restEnd = null; }
-  else { A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; if (!A.prs.some(p => p.en === st.en)) toast(funPhrase(st, it), 'fun'); }
+  else { A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; if (!A.prs.some(p => p.en === st.en)) say(funPhrase(st, it), 'fun'); }
   save(); render();
 }
 
@@ -490,7 +530,7 @@ function queueSheet(){
   const A = S.active;
   const li = (id, i) => { const st = effStep(A.day, id), x = A.items[id]; const d = x ? x.sets.filter(s => s.done).length : 0;
     const mark = x && x.sets.length && d === x.sets.length ? '✅' : d ? '◐' : '○';
-    return `<li><button data-act="jump" data-i="${i}" ${i === A.idx ? 'aria-current="step"' : ''}><span class="st">${mark}</span><span class="qn">${esc(st.en)}<small>${esc(st.dose)}${st.isAlt ? ' · заміна' : ''}</small></span></button></li>`; };
+    return `<li><button data-act="jump" data-i="${i}" ${i === A.idx ? 'aria-current="step"' : ''}><span class="st">${mark}</span><span class="qn">${esc(nm(st.en))}<small>${esc(st.dose)}${st.isAlt ? ' · заміна' : ''}</small></span></button></li>`; };
   const main = [], extra = [];
   A.queue.forEach((id, i) => (effStep(A.day, id).kind === 'extra' ? extra : main).push(li(id, i)));
   openSheet(`<h2>${DAY_NAME[A.day]}</h2><ul class="qlist">${main.join('')}</ul>
@@ -501,12 +541,12 @@ function queueSheet(){
 function busySheet(){
   const A = S.active, id = A.queue[A.idx], base = stepById(A.day, id), it = A.items[id];
   const opts = [];
-  if (base.alt && !it.useAlt) opts.push(`<button data-act="usealt">↔ Замінити: ${esc(base.alt.en)}<small>${esc(base.alt.ua)} · ${esc(base.alt.dose)}</small></button>`);
-  if (it.useAlt) opts.push(`<button data-act="usebase">↩ Повернути: ${esc(base.en)}<small>${esc(base.ua)}</small></button>`);
+  if (base.alt && !it.useAlt) opts.push(`<button data-act="usealt">${ic('swap')} Замінити: ${esc(nm(base.alt.en))}<small>${esc(base.alt.ua)} · ${esc(base.alt.dose)}</small></button>`);
+  if (it.useAlt) opts.push(`<button data-act="usebase">${ic('left')} Повернути: ${esc(nm(base.en))}<small>${esc(base.ua)}</small></button>`);
   const lastMain = A.queue.map((q, i) => [q, i]).filter(([q]) => effStep(A.day, q).kind !== 'extra').pop();
   if (lastMain && lastMain[1] > A.idx) opts.push(`<button data-act="toend">⏭ Зробити наступну, а цю — в кінець черги<small>Повернешся до неї пізніше</small></button>`);
   if (!opts.length) opts.push(`<button data-act="closesheet">Зачекати<small>Інших варіантів для цієї вправи немає</small></button>`);
-  openSheet(`<h2>Тренажер зайнятий</h2><p>${esc(base.en)}</p><div class="opts">${opts.join('')}</div>`);
+  openSheet(`<h2>Тренажер зайнятий</h2><p>${esc(nm(base.en))}</p><div class="opts">${opts.join('')}</div>`);
 }
 
 /* ---------- завершення ---------- */
@@ -532,7 +572,7 @@ function finishScreen(){
   const f = lastFinished; const w = f && S.workouts.find(x => x.id === f.id);
   if (!w) return todayScreen();
   const dur = Math.round((w.end - w.start) / 60000);
-  return `<div class="fin-hero">${f.evening ? SHAKE_SVG : ''}<h1>🎉 Готово!</h1><p>${esc(f.phrase)}</p></div>
+  return `<div class="top fintop"><span class="grow"></span>${gear()}</div><div class="fin-hero">${f.evening ? SHAKE_SVG : ''}<h1>🎉 Готово!</h1><p>${esc(f.phrase)}</p></div>
     <div class="stats">
       <div class="stat"><b>${dur} хв</b><span>тривалість</span></div>
       <div class="stat"><b>${w.sets}</b><span>підходів</span></div>
@@ -540,7 +580,7 @@ function finishScreen(){
       <div class="stat"><b>${w.prs.length}</b><span>${w.prs.length === 1 ? 'рекорд' : 'рекордів'}</span></div>
     </div>
     <p class="muted small" style="text-align:center;margin:-6px 0 12px">Піднято загалом: ${fmtInt(w.tonnage)} кг${f.evening ? ` · 🥤 шейк №${shakes()}` : ''}</p>
-    ${w.prs.map(p => `<div class="newach"><span>🏆</span><div><b>${esc(p.en)}</b><br><small class="muted">${fmt(p.w)} кг × ${fmt(p.r)}</small></div></div>`).join('')}
+    ${w.prs.map(p => `<div class="newach"><span>🏆</span><div><b>${esc(nm(p.en))}</b><br><small class="muted">${fmt(p.w)} кг × ${fmt(p.r)}</small></div></div>`).join('')}
     ${f.fresh.map(id => { const a = achById(id); return `<div class="newach"><span>${a[1]}</span><div><b>Нова ачівка!</b><br>${esc(a[2])}</div></div>`; }).join('')}
     <div class="card"><h3>Як пройшло?</h3>
       <div class="moods">${['😫','😐','🙂','💪'].map(m => `<button data-mood="${m}" aria-pressed="${w.mood === m}">${m}</button>`).join('')}</div>
@@ -564,13 +604,13 @@ function confetti(){
 /* ---------- план дня (без тренування) ---------- */
 function dayPlanSheet(day){
   const st = plan(day);
-  const sec = (k, t) => { const l = st.filter(s => s.kind === k); return l.length ? `<div class="qsec">${t}</div><ul class="qlist">${l.map(s => `<li><button data-act="planex" data-day="${day}" data-id="${s.id}"><span class="qn">${esc(s.en)}<small>${esc(s.ua)} · ${esc(s.dose)}</small></span><span class="st">›</span></button></li>`).join('')}</ul>` : ''; };
+  const sec = (k, t) => { const l = st.filter(s => s.kind === k); return l.length ? `<div class="qsec">${t}</div><ul class="qlist">${l.map(s => `<li><button data-act="planex" data-day="${day}" data-id="${s.id}"><span class="qn">${esc(nm(s.en))}<small>${esc(s.dose)}</small></span><span class="st">›</span></button></li>`).join('')}</ul>` : ''; };
   openSheet(`<h2>${DAY_NAME[day]}</h2>${sec('warm','Розминка')}${sec('main','Силова')}${sec('core','Кор')}${sec('extra','Якщо є час')}`);
 }
 function exSheet(day, id){
   const s = stepById(day, id), L = lib(s.en);
-  openSheet(`<h2>${esc(s.en)}</h2><p>${esc(s.ua)}${L.mach ? `<br><i>${esc(L.mach)}</i>` : ''}<br>План: <b>${esc(s.dose)}</b>${s.note ? `<br>${esc(s.note)}` : ''}</p>
-    ${L.video ? `<p><a class="btn" href="${esc(L.video)}" target="_blank" rel="noopener">▶ Відео</a></p>` : ''}
+  openSheet(`<h2>${esc(nm(s.en))}</h2><p><span class="muted" lang="en">${esc(enm(s.en))}</span>${L.mach ? `<br><i>${esc(L.mach)}</i>` : ''}<br>План: <b>${esc(s.dose)}</b>${s.note ? `<br>${esc(s.note)}` : ''}</p>
+    ${L.video ? `<p><a class="btn" style="text-decoration:none" href="${esc(L.video)}" target="_blank" rel="noopener">${ic('video')} Відео</a></p>` : ''}
     ${techHtml(s.en) || '<p>Техніки для цієї вправи немає.</p>'}
     <div class="opts" style="margin-top:14px"><button data-act="dayplan" data-dayv="${day}">← До плану дня</button></div>`);
 }
@@ -579,7 +619,7 @@ function exSheet(day, id){
 const moodOf = w => w.mood || '';
 function historyScreen(){
   const ws = [...S.workouts].reverse();
-  return `<div class="top"><h1>Історія</h1></div>
+  return `<div class="top"><h1>Історія</h1>${gear()}</div>
     ${ws.length ? `<div class="hlist">${ws.map(w => `<button class="hitem" data-hist="${w.id}"><b>${dShort(w.start)} · ${DAY_NAME[w.day]}</b> ${moodOf(w)}<small>${Math.round((w.end - w.start) / 60000)} хв · ${w.sets} підходів · ${fmtInt(w.tonnage)} кг${w.prs.length ? ` · 🏆 ${w.prs.length}` : ''}</small></button>`).join('')}</div>`
       : `<div class="empty">Тут зʼявляться тренування після першого завершеного.</div>`}
     ${tabbar()}`;
@@ -589,14 +629,14 @@ function histSheet(id){
   openSheet(`<h2>${dShort(w.start)} · ${DAY_NAME[w.day]} ${moodOf(w)}</h2>
     <p>${new Date(w.start).toTimeString().slice(0, 5)}–${new Date(w.end).toTimeString().slice(0, 5)} · ${w.sets} підходів · ${fmtInt(w.tonnage)} кг</p>
     ${w.note ? `<p>📝 ${esc(w.note)}</p>` : ''}
-    <div>${w.items.map(it => `<div class="hex"><b>${esc(it.en)}</b>${it.alt ? ' <small class="muted">(заміна)</small>' : ''}<div class="s">${it.sets.map(s => it.type === 'weight' ? `${fmt(s.w)} кг × ${fmt(s.r)}` : s.r != null ? `${fmt(s.r)}${it.unit === 'sec' ? ' с' : it.unit === 'm' ? ' м' : ''}` : '✓').join(' · ')}</div></div>`).join('')}</div>
+    <div>${w.items.map(it => `<div class="hex"><b>${esc(nm(it.en))}</b>${it.alt ? ' <small class="muted">(заміна)</small>' : ''}<div class="s">${it.sets.map(s => it.type === 'weight' ? `${fmt(s.w)} кг × ${fmt(s.r)}` : s.r != null ? `${fmt(s.r)}${it.unit === 'sec' ? ' с' : it.unit === 'm' ? ' м' : ''}` : '✓').join(' · ')}</div></div>`).join('')}</div>
     <div class="opts" style="margin-top:14px"><button data-act="editw" data-id="${w.id}">Редагувати підходи<small>Виправити вагу чи повтори</small></button><button data-act="delw" data-id="${w.id}">Видалити це тренування<small>Можна буде повернути одразу після видалення</small></button><button data-act="closesheet">Закрити</button></div>`);
 }
 
 function editWorkoutSheet(id){
   const w = S.workouts.find(x => x.id === id); if (!w) return;
   openSheet(`<h2>Редагувати · ${dShort(w.start)}</h2><p>Зміни цифри й натисни «Зберегти».</p>
-    ${w.items.filter(it => it.type !== 'warm').map((it, ii) => { const wi = w.items.indexOf(it); return `<div class="hex"><b>${esc(it.en)}</b>
+    ${w.items.filter(it => it.type !== 'warm').map((it, ii) => { const wi = w.items.indexOf(it); return `<div class="hex"><b>${esc(nm(it.en))}</b>
       ${it.sets.map((x, si) => `<div class="erow"><span class="muted">${si + 1}</span>${it.type === 'weight' ? `<label><input inputmode="decimal" data-ew="${wi}:${si}:w" value="${x.w == null ? '' : fmt(x.w)}"> кг</label>` : ''}<label><input inputmode="decimal" data-ew="${wi}:${si}:r" value="${x.r == null ? '' : fmt(x.r)}"> ${it.unit === 'sec' ? 'с' : it.unit === 'm' ? 'м' : 'повт.'}</label></div>`).join('')}</div>`; }).join('')}
     <button class="big" style="margin-top:14px" data-act="saveew" data-id="${w.id}">Зберегти</button>`);
 }
@@ -630,13 +670,13 @@ function progressScreen(){
   const pts = chartEx ? entriesFor(chartEx).map(({w, it}) => ({x: w.start, y: Math.max(...it.sets.filter(s => s.done && s.w != null).map(s => s.w))})).filter(p => isFinite(p.y)) : [];
   const bw = blockWeek(), tot = S.workouts.reduce((a, w) => a + (w.tonnage || 0), 0);
   const unlocked = achList().filter(a => S.ach[a[0]]).length;
-  return `<div class="top"><h1>Прогрес</h1></div>
+  return `<div class="top"><h1>Прогрес</h1>${gear()}</div>
     <div class="kpis"><div class="stat"><b>${S.workouts.length}</b><span>тренувань</span></div><div class="stat"><b>🔥 ${streakWeeks()}</b><span>тижнів поспіль</span></div><div class="stat"><b>🥤 ${shakes()}</b><span>шейків заслужено</span></div></div>
     <div class="card" style="margin-top:12px"><h3>Мʼязи цього тижня</h3>${weekMap()}</div>
     <div class="card"><h3>Блок: ${bw <= blockLen() ? `тиждень ${bw} з ${blockLen()}` : 'завершено 🎓'}</h3><div class="bar"><i style="width:${Math.min(100, Math.round(Math.min(bw, blockLen()) / blockLen() * 100))}%"></i></div>
       ${calMonth(now.getFullYear(), now.getMonth(), days)}${calMonth(pm.getFullYear(), pm.getMonth(), days)}</div>
     <div class="card"><h3>Ачівки · ${unlocked} з ${achList().length}</h3><div class="achs">${achList().map(([id, e, t]) => `<div class="ach ${S.ach[id] ? '' : 'lock'}"><span>${S.ach[id] ? e : '🔒'}</span>${esc(t)}</div>`).join('')}</div></div>
-    <div class="card"><h3>Вага по вправі</h3>${exs.length ? `<select data-act="chartex" aria-label="Вправа">${exs.map(e => `<option ${e === chartEx ? 'selected' : ''}>${esc(e)}</option>`).join('')}</select>${lineChart(pts, 'найбільша вага за тренування, кг')}` : '<p class="muted small">Графік зʼявиться після першого тренування.</p>'}</div>
+    <div class="card"><h3>Вага по вправі</h3>${exs.length ? `<select data-act="chartex" aria-label="Вправа">${exs.map(e => `<option value="${esc(e)}" ${e === chartEx ? 'selected' : ''}>${esc(nm(e))}</option>`).join('')}</select>${lineChart(pts, 'найбільша вага за тренування, кг')}` : '<p class="muted small">Графік зʼявиться після першого тренування.</p>'}</div>
     ${tabbar()}`;
 }
 
@@ -654,7 +694,8 @@ function weekMap(){
 const HOME = {
   p1: [{id:'neck', icon:'🦒', title:'Шия', desc:'«Кивок» лежачи 10 × 10 с і тиск головою в долоню без руху', per:7, freq:'щодня'},
        {id:'calf', icon:'🦵', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'}],
-  p2: [{id:'calf', icon:'🦵', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'}]
+  p2: [{id:'calf', icon:'🦵', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'},
+       {id:'balance', icon:'🦩', title:'Баланс', desc:'Поки чистиш зуби, стій на одній нозі: по 30 с на кожну, двічі. Коліно мʼяке, погляд прямо, раковина поруч. Хитаєшся — так і має бути, саме це й тренує гомілкостоп.', per:5, freq:'5 днів на тиждень'}]
 };
 const homeDone = (d, id) => (S.home[d] || []).includes(id);
 function homeCount(id){ return Object.values(S.home).filter(a => a.includes(id)).length; }
@@ -662,7 +703,7 @@ function homeStreak(id){ let d = new Date(), n = 0; if (!homeDone(iso(d), id)) d
 function homeScreen(){
   const today = iso(new Date()), ws = weekStart(Date.now());
   const days = Array.from({length: 7}, (_, i) => { const d = new Date(ws + i * 864e5); return {k: iso(d), l: ['Пн','Вт','Ср','Чт','Пт','Сб','Нд'][i], t: iso(d) === today}; });
-  return `<div class="top"><h1>Вдома</h1></div>
+  return `<div class="top"><h1>Вдома</h1>${gear()}</div>
     <p class="muted" style="margin:-6px 0 14px">Короткі вправи поза залом. Познач, коли зробила.</p>
     ${HOME[person].map(h => { const done = homeDone(today, h.id); const wk = days.filter(d => homeDone(d.k, h.id)).length;
       return `<div class="card"><div class="row"><span style="font-size:30px">${h.icon}</span><div class="grow"><h2>${h.title}</h2><p class="muted small">${h.freq} · цього тижня ${wk} з ${h.per}</p></div></div>
@@ -687,7 +728,7 @@ function blockStats(){
 function blockEndSheet(){
   const b = blockStats();
   openSheet(`<h2>🎓 Блок завершено!</h2><p>${dShort(b.from)} — ${dShort(b.to)} · ${b.n} тренувань · ${b.sets} підходів · ${b.prs} рекордів · 🥤 ${b.shakes}</p>
-    ${b.prog.length ? `<div class="qsec">Найбільший прогрес</div>${b.prog.map(x => `<div class="mrow"><span>${esc(x.en)}</span><span>${fmt(x.from)} → <b>${fmt(x.to)}</b> кг <span class="dn">+${Math.round(x.pct)}%</span></span></div>`).join('')}` : ''}
+    ${b.prog.length ? `<div class="qsec">Найбільший прогрес</div>${b.prog.map(x => `<div class="mrow"><span>${esc(nm(x.en))}</span><span>${fmt(x.from)} → <b>${fmt(x.to)}</b> кг <span class="dn">+${Math.round(x.pct)}%</span></span></div>`).join('')}` : ''}
     <div class="opts" style="margin-top:14px">
       <button data-act="cert">🖼 Сертифікат<small>Картинка з підсумком — зберегти у «Фото» або поділитися</small></button>
       ${blockLen() < 12 ? `<button data-act="extend">➕ Продовжити блок ще на 2 тижні<small>Якщо ваги ще ростуть — нічого не міняємо</small></button>` : ''}
@@ -708,7 +749,7 @@ async function certificate(){
   const st = [[b.n, 'тренувань'], [b.sets, 'підходів'], [b.prs, 'рекордів'], [b.shakes, 'шейків 🥤']];
   st.forEach(([v, l], i) => { const cx = 150 + i * 260; x.fillStyle = ink; x.font = F(800, 72); x.fillText(String(v), cx, 690); x.fillStyle = mut; x.font = F(500, 30); x.fillText(l, cx, 735); });
   if (b.prog.length){ x.fillStyle = acc; x.font = F(800, 36); x.fillText('НАЙБІЛЬШИЙ ПРОГРЕС', 540, 850);
-    b.prog.forEach((p, i) => { x.fillStyle = ink; x.font = F(600, 40); x.fillText(`${p.en}: ${fmt(p.from)} → ${fmt(p.to)} кг (+${Math.round(p.pct)}%)`, 540, 920 + i * 62); }); }
+    b.prog.forEach((p, i) => { x.fillStyle = ink; x.font = F(600, 40); x.fillText(`${nm(p.en)}: ${fmt(p.from)} → ${fmt(p.to)} кг (+${Math.round(p.pct)}%)`, 540, 920 + i * 62); }); }
   x.fillStyle = mut; x.font = F(600, 34); x.fillText('Зал на двох 🏋️', 540, 1270);
   const blob = await new Promise(r => c.toBlob(r, 'image/png')); const name = `sertyfikat-${who()}-${iso(new Date())}.png`;
   try { const file = new File([blob], name, {type: 'image/png'});
@@ -724,7 +765,7 @@ function measureScreen(){
   const last = M[M.length - 1], prev = M[M.length - 2];
   const pts = M.filter(m => m[mKey] != null).map(m => ({x: new Date(m.date).getTime(), y: m[mKey]}));
   const mf = MF.find(f => f[0] === mKey);
-  return `<div class="top"><h1>Заміри</h1></div>
+  return `<div class="top"><h1>Заміри</h1>${gear()}</div>
     <button class="big" data-act="addm">${ic('plus')} Додати заміри</button>
     ${last ? `<div class="card" style="margin-top:12px"><h3>Останні · ${dShort(new Date(last.date).getTime())}</h3>
       ${MF.map(([k, l, u]) => { const v = last[k], p = prev ? prev[k] : null; const dlt = v != null && p != null ? v - p : null;
@@ -813,7 +854,7 @@ document.addEventListener('click', e => {
   if (d.hist){ histSheet(d.hist); return; }
   if (d.mood){ const w = S.workouts.find(x => x.id === lastFinished.id); if (w){ w.mood = d.mood; save(); app.querySelectorAll('[data-mood]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mood === d.mood)); } return; }
   if (d.feel && S.active){ const it = S.active.items[S.active.queue[S.active.idx]]; it.feel = it.feel === d.feel ? null : d.feel; save(); render(); return; }
-  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) toast(`${achById(fresh[0])[1]} Нова ачівка: ${esc(achById(fresh[0])[2])}`); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
+  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(achById(fresh[0])[1], 'Нова ачівка!', esc(achById(fresh[0])[2])); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
   if (d.theme){ LS.set('trn:theme', d.theme); applyTheme(); settingsSheet(); return; }
   if (d.dur){ S.settings.duration = +d.dur; S.settings.durTouched = true; save(); settingsSheet(); render(); return; }
   if (d.rest){ const [k, v] = d.rest.split(':'); S.settings[k] = +v; save(); settingsSheet(); return; }
@@ -860,7 +901,7 @@ document.addEventListener('click', e => {
       if (!any){ toast('Заповни хоча б одне поле'); break; }
       S.measurements = S.measurements.filter(x => x.date !== date && x.date !== d.orig); S.measurements.push(m);
       const fresh = checkAch(); save(); closeSheet(); render();
-      toast(fresh.length ? `${achById(fresh[0])[1]} Нова ачівка: ${esc(achById(fresh[0])[2])}` : 'Заміри збережено ✓'); break; }
+      if (fresh.length) sayIco(achById(fresh[0])[1], 'Нова ачівка!', esc(achById(fresh[0])[2])); else toast('Заміри збережено ✓'); break; }
     case 'editm': addMeasureSheet(d.date); break;
     case 'delm': { if (!t.classList.contains('armed')){ t.classList.add('armed'); t.innerHTML = `${ic('trash')} Точно видалити? Натисни ще раз`; break; }
       const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone, ach: Object.assign({}, S.ach)}; recheckAch(); save(); closeSheet(); render();
@@ -874,7 +915,7 @@ document.addEventListener('click', e => {
     case 'minimize': closeSheet(); releaseWake(); selDay = null; go('today'); break;
     case 'resume': startWorkout(S.active.day); break;
     case 'backup': backup(); break;
-    case 'restore': { const f = document.getElementById('restorefile'); f.onchange = () => f.files[0] && restoreFrom(f.files[0]); f.click(); break; }
+    case 'restore': { if (S.active){ toast('Спершу заверши тренування'); break; } const f = document.getElementById('restorefile'); f.onchange = () => f.files[0] && restoreFrom(f.files[0]); f.click(); break; }
     case 'dorestore': { const j = restoreFrom.pending; if (j){ person = j.person in P.people ? j.person : person; LS.set('trn:person', person); S = Object.assign(blank(), j.data); save(); toast('Дані відновлено ✓'); } closeSheet(); go('today'); break; }
     case 'newblock': S.blockStart = Date.now(); S.blockLen = 8; save(); closeSheet(); render(); toast('Новий блок: тиждень 1 з 8'); break;
     case 'extend': S.blockLen = Math.min(12, blockLen() + 2); save(); closeSheet(); render(); toast(`Блок продовжено: ${blockLen()} тижнів`); break;
@@ -884,7 +925,7 @@ document.addEventListener('click', e => {
     case 'deload': S.deloadUntil = Date.now() + 7 * 864e5; save(); render(); toast('🪶 Легкий тиждень: вага −25% на 7 днів'); break;
     case 'deloadlater': S.deloadSnooze = Date.now() + 7 * 864e5; save(); render(); break;
     case 'mnote': { const id = S.active.queue[S.active.idx], st = effStep(S.active.day, id);
-      openSheet(`<h2>Налаштування тренажера</h2><p>${esc(st.en)} — що виставляти, щоб не підбирати щоразу.</p>
+      openSheet(`<h2>Налаштування тренажера</h2><p>${esc(nm(st.en))} — що виставляти, щоб не підбирати щоразу.</p>
         <textarea id="mnotetxt" placeholder="Напр.: сидіння 4, спинка 2, стопи вгорі платформи">${esc(S.mnotes[st.en] || '')}</textarea>
         <div class="opts" style="margin-top:12px"><button class="btn acc" style="text-align:center" data-act="savemnote" data-en="${esc(st.en)}">Зберегти</button></div>`); break; }
     case 'savemnote': { const v = document.getElementById('mnotetxt').value.trim(); if (v) S.mnotes[d.en] = v; else delete S.mnotes[d.en]; save(); closeSheet(); render(); break; }

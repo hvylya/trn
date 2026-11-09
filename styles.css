@@ -50,7 +50,7 @@ h1,h2,h3,h4,h5,p{margin:0}
 .dot i{width:12px; height:12px; border-radius:50%; border:2px solid var(--muted)}
 .dot.done i{background:var(--ok); border-color:var(--ok)}
 .dot.done{color:var(--ink)}
-.preview{margin:10px 0 14px; padding:0; list-style:none; display:flex; flex-direction:column; gap:4px; color:var(--muted); font-size:15px}
+.preview{margin:10px 0 14px; padding:0; list-style:none; display:flex; flex-direction:column; gap:4px; color:var(--ink); font-size:16px}
 .preview b{color:var(--ink); font-weight:600}
 .banner{display:flex; gap:10px; align-items:center; padding:12px 14px; border-radius:12px; background:color-mix(in srgb,var(--warn) 14%, transparent); border:1px solid color-mix(in srgb,var(--warn) 40%, transparent); margin-bottom:12px; font-size:15px}
 
@@ -144,8 +144,20 @@ h1,h2,h3,h4,h5,p{margin:0}
 .qlist .qn small{display:block; color:var(--muted); font-size:13px}
 .qsec{font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:10px 0 4px}
 
-#toast{position:fixed; left:50%; top:calc(var(--safe-t) + 12px); transform:translateX(-50%); z-index:60; max-width:92vw; padding:12px 16px; border-radius:14px; background:var(--surface2); border:1px solid var(--line); box-shadow:0 10px 30px rgba(0,0,0,.5); font-weight:600; text-align:center}
-#toast.pr{background:linear-gradient(135deg,#ffcf5a,#ff7a59); color:#2a1206; border:0}
+#toast{position:fixed; left:0; right:0; bottom:calc(var(--safe-b) + 84px); z-index:60; display:flex; justify-content:center; padding:0 16px; pointer-events:none}
+#app.inworkout ~ #toast{bottom:calc(var(--safe-b) + 136px)}
+.tcard{pointer-events:auto; position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; max-width:528px; padding:12px 16px 14px; border-radius:16px; background:var(--surface2); color:var(--ink); border:1px solid var(--line); box-shadow:0 10px 30px rgba(0,0,0,.35); font-weight:600; line-height:1.35; animation:tin .22s ease-out; transition:transform .15s; cursor:pointer}
+.tcard.out{animation:tout .18s ease-in forwards}
+.tcard.fun{background:var(--accent); color:var(--accent-ink); border-color:transparent}
+.tcard.pr{background:linear-gradient(135deg,#ffcf5a,#ff7a59); color:#2a1206; border:0}
+.tico{font-size:30px; line-height:1; flex:none}
+.tt{display:flex; flex-direction:column; min-width:0}
+.tt b{font-size:17px}
+.tt small{font-weight:500; font-size:14px; opacity:.85; margin-top:2px}
+.tbar{position:absolute; left:0; right:0; bottom:0; height:3px; background:currentColor; opacity:.3; transform-origin:left; animation:tbar linear forwards}
+@keyframes tin{from{transform:translateY(14px); opacity:0}to{transform:none; opacity:1}}
+@keyframes tout{to{transform:translateY(14px); opacity:0}}
+@keyframes tbar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 #confetti{position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:70}
 
 /* finish */
@@ -236,7 +248,6 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 .hweek span{text-align:center; padding:6px 0; border-radius:8px; background:var(--surface2); font-size:12px; color:var(--muted)}
 .hweek span.h{background:var(--ok); color:#06261a; font-weight:700}
 .hweek span.t{outline:2px solid var(--ink)}
-#toast.fun{font-size:18px; padding:14px 18px; background:var(--accent); color:var(--accent-ink); border:0}
 
 /* іконки */
 .ic{width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; vertical-align:-4px}
@@ -288,3 +299,16 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 .tpair .tfig{max-width:none}
 .tphoto{padding:0; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:#fff; aspect-ratio:1; cursor:zoom-in}
 .zoomimg{display:block; width:100%; max-height:70dvh; object-fit:contain; background:#fff; border-radius:14px; margin-top:8px}
+
+/* техніка: фокус, кроки, підказки, аналогія */
+.tech .tfocus{margin:2px 0 8px; padding:10px 12px; border-radius:12px; background:color-mix(in srgb,var(--accent) 16%, transparent); font-weight:600}
+.tech .ttips{margin-top:8px; list-style:none; padding-left:0}
+.tech .ttips li{padding-left:22px; position:relative; color:var(--muted)}
+.tech .ttips li::before{content:'!'; position:absolute; left:4px; top:0; font-weight:800; color:var(--accent)}
+.tech .tfun{margin-top:10px; font-style:italic; color:var(--muted)}
+.tech .twhy{margin-top:10px; font-size:15px; color:var(--muted)}
+.exua{font-size:13px; letter-spacing:.02em; opacity:.85; margin-top:2px}
+.fintop{margin-bottom:0}
+.wtop .iconbtn:last-child{flex:none}
+@media (max-width:400px){ .wtop .iconbtn.wide{width:44px; padding:0; justify-content:center} .wtop .iconbtn.wide span{display:none} }
+.wtop .clock small{display:block}
