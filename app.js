@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.8.1';
+const APP_VERSION = '1.9.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -96,7 +96,7 @@ function applyTheme(){ const t = curTheme(); document.documentElement.dataset.th
 applyTheme();
 
 /* ---------- Томек: сірі наліпки, перефарбовані під кольори теми ---------- */
-const TOM = ['logo','ogo','smug','shake','inspector','proud','sleep','back','shy','loaf','first'];
+const TOM = ['logo','ogo','smug','shake','inspector','proud','sleep','back','shy','loaf','first','yay','wig','trio','box','peek'];
 const tomCache = {};
 const tomUrl = n => tomCache[curTheme() + ':' + n] || `img/tomek/${n}.png`;
 const tom = (n, cls) => `<img class="tom ${cls || ''}" data-t="${n}" src="${tomUrl(n)}" alt="" aria-hidden="true">`;
@@ -349,7 +349,8 @@ function startWorkout(day){
     const lastW = S.workouts[S.workouts.length - 1];
     S.active = { day, start: Date.now(), queue: q, idx: 0, items: {}, overAsked: false, prs: [], ups: 0, restEnd: null, restTotal: 0 };
     save();
-    if (lastW && Date.now() - lastW.end > 10 * 864e5){ S.active.tb = {n: 1, pr: 0, at: 0, first: true, ex: 0}; setTimeout(() => say(pick(FUN.comeback), 'fun', '', 'first'), 500); }
+    if (lastW && Date.now() - lastW.end > 10 * 864e5){ const dd = Math.floor((Date.now() - lastW.end) / 864e5); S.active.tb = {n: 1, pr: 0, at: 0, first: true, ex: 0};
+      setTimeout(() => say(pick(FUN.comeback.concat([`Томек виглядав тебе ${dd} ${dd % 10 === 1 && dd % 100 !== 11 ? 'день' : [2,3,4].includes(dd % 10) && ![12,13,14].includes(dd % 100) ? 'дні' : 'днів'}`])), 'fun', '', 'peek'), 500); }
   }
   requestWake();
   go('workout');
@@ -569,7 +570,7 @@ function funPhrase(st, it){
     const mx = sets => Math.max(0, ...sets.filter(x => x.done).map(x => x.w || 0));
     const nowW = mx(it.sets), wasW = mx(l.it.sets), ever = Math.max(...es.map(e => mx(e.it.sets)));
     const mile = MILES.filter(m => m > ever && m <= nowW).pop();
-    if (mile) return [`Перші ${mile} кг! ${pick(FUN.milestone)}`, 'ogo', 5];
+    if (mile) return [`Перші ${mile} кг! ${pick(FUN.milestone)}`, 'yay', 5];
     if (wasW > 0 && nowW >= wasW * 1.1 && nowW - wasW >= 2 * st.step) return [pick(FUN.wow), 'ogo', 4];
     if (es.length >= 2){ const w2 = mx(es[es.length - 2].it.sets); if (w2 > 0 && wasW > w2 && nowW > wasW) return [pick(FUN.streak), 'smug', 3]; }
   }
@@ -621,9 +622,9 @@ function busySheet(){
   if (base.alt && !it.useAlt) opts.push(`<button data-act="usealt">${ic('swap')} Замінити: ${esc(nm(base.alt.en))}<small>${esc(base.alt.ua)} · ${esc(base.alt.dose)}</small></button>`);
   if (it.useAlt) opts.push(`<button data-act="usebase">${ic('left')} Повернути: ${esc(nm(base.en))}<small>${esc(base.ua)}</small></button>`);
   const lastMain = A.queue.map((q, i) => [q, i]).filter(([q]) => effStep(A.day, q).kind !== 'extra').pop();
-  if (lastMain && lastMain[1] > A.idx) opts.push(`<button data-act="toend">⏭ Зробити наступну, а цю — в кінець черги<small>Повернешся до неї пізніше</small></button>`);
+  if (lastMain && lastMain[1] > A.idx) opts.push(`<button data-act="toend">${ic('right')} Зробити наступну, а цю — в кінець черги<small>Повернешся до неї пізніше</small></button>`);
   if (!opts.length) opts.push(`<button data-act="closesheet">Зачекати<small>Інших варіантів для цієї вправи немає</small></button>`);
-  openSheet(`<h2>Тренажер зайнятий</h2><p>${esc(nm(base.en))}</p><div class="opts">${opts.join('')}</div>`);
+  openSheet(`${tom('box','tomsheet')}<h2>Тренажер зайнятий</h2><p>${esc(nm(base.en))}. Томек теж займає коробки — тож ось варіанти.</p><div class="opts">${opts.join('')}</div>`);
 }
 
 /* ---------- завершення ---------- */
@@ -900,7 +901,7 @@ function mInsight(){
     else if (legs >= CM && T.waist <= .25) r = {t: 'good', tom: 'proud', h: seedPick([`${fmtD(legs, 'см')} у ${legK}, талія на місці`, `Ноги ростуть, талія тримається`], seed), p: legUp ? 'І сила в ногах росте. Томек підтверджує: це мʼязи.' : 'Саме так виглядає набір мʼязів.'};
     else if (legs >= CM && T.waist <= legs * .5) r = {t: 'good', tom: 'smug', h: `${fmtD(legs, 'см')} у ${legK}`, p: 'Талія трохи підросла, але повільніше за ноги. Нормальний набір.'};
     else if (legs > 0 && T.waist >= CM && T.waist >= legs) r = legUp ? {t: 'meh', tom: 'loaf', h: 'Росте все, разом із талією', p: 'Сила росте, тож частина — мʼязи. Але темп трохи завеликий.'}
-      : {t: 'meh', tom: 'inspector', h: 'Росте все, разом із талією', p: 'Схоже, з будівельним матеріалом перебір. Томек пропонує трохи менше літерки «В».'};
+      : {t: 'meh', tom: 'wig', h: 'Росте все, разом із талією', p: 'Схоже, з будівельним матеріалом перебір. Томек пропонує трохи менше літерки «В».'};
     else if (Math.abs(legs) < CM && legUp) r = {t: 'ok', tom: 'smug', h: 'Сила в ногах росте', p: 'Сантиметри наздоженуть: мʼязи спершу міцніють, потім ростуть.'};
     else if (legs <= -CM * 2 || badW('weight', -1, KG)) r = {t: 'meh', tom: 'shake', h: 'Мінус у вазі', p: 'Мʼязам потрібне будівельне. Томек радить перекус — і шейк.'};
     else if (D.weight >= KG && D.waist < CM) r = {t: 'good', tom: 'smug', h: `${fmtD(D.weight, 'кг')} без талії`, p: 'Набір у правильний бік.'};
@@ -910,14 +911,14 @@ function mInsight(){
     else if (D.waist <= -CM) r = {t: 'good', tom: 'smug', h: `${fmtD(D.waist, 'см')} у талії`, p: seedPick(['Мінус сантиметр — це вже видно в дзеркалі.','Сантиметр за сантиметром. Томек аплодує.'], seed)};
     else if (D.weight <= -KG) r = {t: 'good', tom: 'smug', h: `${fmtD(D.weight, 'кг')}`, p: seedPick(['Пів кіло — як пачка масла. Тільки краще: її більше немає.','Стрілка вагів рушила. Так тримати.'], seed)};
     else if (D.weight >= KG && D.waist <= -CM) r = {t: 'ok', tom: 'loaf', h: 'Вага вгору, талія вниз', p: 'Це мʼязи або вода. Не страшно.'};
-    else if (badW('weight', 1, KG) && T.waist >= 0) r = {t: 'meh', tom: 'inspector', h: 'Вага росте другий тиждень', p: 'Схоже, літерка «В» трохи розгулялась. Томек не судить — Томек спостерігає.'};
+    else if (badW('weight', 1, KG) && T.waist >= 0) r = {t: 'meh', tom: 'wig', h: 'Вага росте другий тиждень', p: 'Схоже, літерка «В» трохи розгулялась. Томек не судить — Томек спостерігає.'};
     else if (D.weight >= KG) r = {t: 'ok', tom: 'loaf', h: `${fmtD(D.weight, 'кг')}`, p: 'Буває: вода, сіль, гормони. Дивимось на наступний тиждень.'};
   } else {
     if (upper >= CM && T.waist <= .25) r = {t: 'good', tom: 'proud', h: `${fmtD(upper, 'см')} у ${(T.biceps || 0) >= (T.chest || 0) ? 'біцепсі' : 'грудях'}`, p: upUp ? 'Верх росте, талія на місці, сила теж. Класика рекомпозиції.' : 'Верх росте, талія на місці. Класика рекомпозиції.'};
-    else if (upper >= CM && badW('waist', 1, CM)) r = {t: 'meh', tom: 'inspector', h: 'Росте все, разом із талією', p: 'Трохи стежимо за літеркою «В».'};
+    else if (upper >= CM && badW('waist', 1, CM)) r = {t: 'meh', tom: 'wig', h: 'Росте все, разом із талією', p: 'Трохи стежимо за літеркою «В».'};
     else if (T.waist <= -CM && Math.abs(T.weight) < KG * 2) r = {t: 'good', tom: 'smug', h: `${fmtD(T.waist, 'см')} у талії`, p: 'Підсушуєшся при тій самій вазі. Чудово.'};
     else if (D.biceps >= CM || D.chest >= CM) r = {t: 'good', tom: 'smug', h: `${fmtD(Math.max(D.biceps || 0, D.chest || 0), 'см')} у ${(D.biceps || 0) >= (D.chest || 0) ? 'біцепсі' : 'грудях'}`, p: 'Плечі й спина працюють не дарма.'};
-    else if (badW('waist', 1, CM)) r = {t: 'meh', tom: 'inspector', h: 'Талія підросла', p: 'Два заміри поспіль. Трохи стежимо за літеркою «В».'};
+    else if (badW('waist', 1, CM)) r = {t: 'meh', tom: 'wig', h: 'Талія підросла', p: 'Два заміри поспіль. Трохи стежимо за літеркою «В».'};
   }
   if (!r) r = {t: 'ok', tom: 'loaf', h: seedPick(['Стабільно','Тримаєш форму','Без різких рухів'], seed), p: 'Коливання до 0,5 — це вода й сніданок. Дивись на тенденцію за 3–4 тижні.'};
   // накопичене від старту — у добрий бік для цієї цілі
@@ -931,7 +932,7 @@ const mDir = k => ({gain: {weight: 1, thigh: 1, hips: 1, waist: -1}, keep: {ches
 function mInsightCard(){
   const r = mInsight(); if (!r) return '';
   const sus = mSuspicious(), M = [...S.measurements].sort((a, b) => a.date.localeCompare(b.date)), ld = M.length ? M[M.length - 1].date : '';
-  const warn = sus.length ? `<div class="minsight meh">${tom('inspector', 'tomins')}<div><b>Інспектор просить перевірити</b><p>${sus.map(x => `${x.l} ${fmtD(x.d, x.u)}`).join(', ')} — за такий час так не буває. Схоже на помилку стрічки, коми чи ваг. Поки цей замір не враховується.</p><button class="btn" style="margin-top:8px" data-act="editm" data-date="${ld}">${ic('pencil')} Змінити</button></div></div>` : '';
+  const warn = sus.length ? `<div class="minsight meh">${tom('trio', 'tomins')}<div><b>Інспектори просять перевірити</b><p>${sus.map(x => `${x.l} ${fmtD(x.d, x.u)}`).join(', ')} — за такий час так не буває. Схоже на помилку стрічки, коми чи ваг. Поки цей замір не враховується.</p><button class="btn" style="margin-top:8px" data-act="editm" data-date="${ld}">${ic('pencil')} Змінити</button></div></div>` : '';
   return warn + `<div class="minsight ${r.t}">${tom(r.tom, 'tomins')}<div><b>${esc(r.h)}</b><p>${esc(r.p)}</p>${r.start ? `<small>${esc(r.start)}</small>` : ''}</div></div>`;
 }
 
@@ -1034,7 +1035,7 @@ document.addEventListener('click', e => {
   if (d.hist){ histSheet(d.hist); return; }
   if (d.mood){ const w = S.workouts.find(x => x.id === lastFinished.id); if (w){ w.mood = d.mood; save(); app.querySelectorAll('[data-mood]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mood === d.mood)); } return; }
   if (d.feel && S.active){ const it = S.active.items[S.active.queue[S.active.idx]]; it.feel = it.feel === d.feel ? null : d.feel; save(); render(); return; }
-  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(tom('proud'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
+  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
   if (d.fun){ S.settings.fun = d.fun; save(); settingsSheet(); return; }
   if (d.theme){ LS.set('trn:theme', d.theme); applyTheme(); settingsSheet(); return; }
   if (d.dur){ S.settings.duration = +d.dur; S.settings.durTouched = true; save(); settingsSheet(); render(); return; }
@@ -1067,7 +1068,7 @@ document.addEventListener('click', e => {
       const left = mainLeft();
       if (left.length && !t.dataset.confirmed && !t.closest('.sh')){
         openSheet(`<h2>Завершити тренування?</h2><p>Лишилось ${left.length} ${left.length === 1 ? 'вправа' : left.length < 5 ? 'вправи' : 'вправ'}. Збережеться те, що зроблено.</p>
-          <div class="opts"><button data-act="finish" data-confirmed="1">✓ Завершити</button><button data-act="closesheet">Продовжити тренування</button></div>`);
+          <div class="opts"><button data-act="finish" data-confirmed="1">${ic('check')} Завершити</button><button data-act="closesheet">Продовжити тренування</button></div>`);
       } else finishWorkout();
       break; }
     case 'cancelw': openSheet(`<h2>Скасувати тренування?</h2><p>Нічого з сьогоднішнього не збережеться.</p><div class="opts"><button data-act="docancel">Так, скасувати</button><button data-act="closesheet">Ні, продовжити</button></div>`); break;
@@ -1082,7 +1083,7 @@ document.addEventListener('click', e => {
       if (!any){ toast('Заповни хоча б одне поле'); break; }
       S.measurements = S.measurements.filter(x => x.date !== date && x.date !== d.orig); S.measurements.push(m);
       const fresh = checkAch(); save(); closeSheet(); render();
-      window.scrollTo(0, 0); if (fresh.length) sayIco(tom('proud'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else toast('Заміри збережено ✓'); break; }
+      window.scrollTo(0, 0); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else toast('Заміри збережено ✓'); break; }
     case 'editm': addMeasureSheet(d.date); break;
     case 'delm': { if (!t.classList.contains('armed')){ t.classList.add('armed'); t.innerHTML = `${ic('trash')} Точно видалити? Натисни ще раз`; break; }
       const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone, ach: Object.assign({}, S.ach)}; recheckAch(); save(); closeSheet(); render();
