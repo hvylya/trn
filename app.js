@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.10.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -74,6 +74,8 @@ const IP = {
   ring:'<circle cx="12" cy="12" r="7.5"/>',
   half:'<circle cx="12" cy="12" r="7.5"/><path d="M12 4.5a7.5 7.5 0 0 1 0 15z" fill="currentColor"/>',
   dot:'<circle cx="12" cy="12" r="7.5" fill="currentColor"/><path d="M8.5 12.3l2.4 2.4 4.6-4.9" stroke="var(--bg)"/>',
+  plank:'<circle cx="19" cy="8.5" r="1.8"/><path d="M17.2 9.6 4 14.5M15.5 10.4v4.6h3.5M4 14.5v1.5"/>',
+  bug:'<circle cx="19" cy="15" r="1.8"/><path d="M5 16h12M14 16l-2-8M8 16l-2.5-7M12 8l2 .5M5.5 9l2 .5"/>',
   timer:'<circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.5 2M9.5 2.5h5"/>'
 };
 const gear = () => `<button class="iconbtn" data-act="settings" aria-label="Налаштування">${ic('gear')}</button>`;
@@ -96,7 +98,7 @@ function applyTheme(){ const t = curTheme(); document.documentElement.dataset.th
 applyTheme();
 
 /* ---------- Томек: сірі наліпки, перефарбовані під кольори теми ---------- */
-const TOM = ['logo','ogo','smug','shake','inspector','proud','sleep','back','shy','loaf','first','yay','wig','trio','box','peek'];
+const TOM = ['logo','ogo','smug','shake','inspector','proud','sleep','back','shy','loaf','first','yay','wig','trio','box','peek','sideeye'];
 const tomCache = {};
 const tomUrl = n => tomCache[curTheme() + ':' + n] || `img/tomek/${n}.png`;
 const tom = (n, cls) => `<img class="tom ${cls || ''}" data-t="${n}" src="${tomUrl(n)}" alt="" aria-hidden="true">`;
@@ -278,6 +280,9 @@ const ACH = [
   ['neck7','head','Шия 7 днів поспіль', s => homeStreak('neck') >= 7, 'p1'],
   ['calf10','stairs','Ікри вдома 10 разів', s => homeCount('calf') >= 10],
   ['bal10','oneleg','Фламінго: баланс 10 разів', s => homeCount('balance') >= 10, 'p2'],
+  ['core1','plank','Перший кор-сет', s => homeCount('core') >= 1, 'p3'],
+  ['core10','plank','Кор удома 10 разів', s => homeCount('core') >= 10, 'p3'],
+  ['core30','bug','Кор удома 30 разів', s => homeCount('core') >= 30, 'p3'],
   ['m4','calok','Заміри 4 тижні поспіль', s => { const ws = new Set(s.measurements.map(m => weekStart(new Date(m.date).getTime()))); let k = weekStart(Date.now()), n = 0; if (!ws.has(k)) k = weekStart(k - 3 * 864e5); while (ws.has(k)){ n++; k = weekStart(k - 3 * 864e5); } return n >= 4; }]
 ];
 const achList = () => ACH.filter(a => !a[4] || a[4] === person);
@@ -292,13 +297,24 @@ function chooseScreen(){
     ${tom('logo','tomchoose')}
     <h1>Хто тренується на цьому телефоні?</h1>
     <p class="muted">Кожна бачить свою програму й свій трекер. Дані зберігаються лише на цьому телефоні.</p>
-    <button class="big" data-person="p1">${esc(P.people.p1)}</button>
-    <button class="big" data-person="p2">${esc(P.people.p2)}</button>
+    ${Object.entries(P.people).map(([k, n]) => `<button class="big" data-person="${k}">${esc(n)}</button>`).join('')}
   </div>`;
 }
 
 /* ---------- сьогодні ---------- */
+const hasPlan = () => P.days.some(d => (d[person] || []).length);
+function soonScreen(){
+  return `<div class="top">${tom('logo','tomhead')}<h1>Привіт, ${esc(who())}</h1>${gear()}</div>
+    <div class="card soon">${tom('sideeye','tomhero')}
+      <h2>Де моя програма?</h2>
+      <p>Томек складає її під тебе, а не з шаблону. Поки що можна вже грати: кор удома приносить ачівки, а заміри — точку старту, з якою потім буде що порівнювати.</p>
+      <button class="big" data-go="home">${ic('home')} Кор удома</button>
+      <button class="big ghost" data-act="addm">${ic('ruler')} Внести заміри</button>
+    </div>
+    ${tabbar()}`;
+}
 function todayScreen(){
+  if (!hasPlan()) return soonScreen();
   const day = selDay || (S.active ? S.active.day : nextDay());
   const cont = S.active && S.active.day !== day ? ` (${DAY_NAME[S.active.day].toLowerCase()})` : '';
   const steps = plan(day).filter(s => s.kind !== 'extra');
@@ -775,7 +791,8 @@ const HOME = {
   p1: [{id:'neck', icon:'head', title:'Шия', desc:'«Кивок» лежачи 10 × 10 с і тиск головою в долоню без руху', per:7, freq:'щодня'},
        {id:'calf', icon:'stairs', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'}],
   p2: [{id:'calf', icon:'stairs', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'},
-       {id:'balance', icon:'oneleg', title:'Баланс', desc:'Поки чистиш зуби, стій на одній нозі: по 30 с на кожну, двічі. Коліно мʼяке, погляд прямо, раковина поруч. Хитаєшся — так і має бути, саме це й тренує гомілкостоп.', per:5, freq:'5 днів на тиждень'}]
+       {id:'balance', icon:'oneleg', title:'Баланс', desc:'Поки чистиш зуби, стій на одній нозі: по 30 с на кожну, двічі. Коліно мʼяке, погляд прямо, раковина поруч. Хитаєшся — так і має бути, саме це й тренує гомілкостоп.', per:5, freq:'5 днів на тиждень'}],
+  p3: [{id:'core', icon:'plank', title:'Кор-сет на 10 хвилин', desc:'Місця — як для килимка.\n1. Планка на ліктях: 3 × 20–40 с, сідниці й живіт напружені, поперек не провисає.\n2. Мертвий жук: 2 × 8 на кожну сторону, поперек притиснутий до підлоги, видих — коли опускаєш.\n3. Бокова планка: 2 × 20–30 с на кожен бік, таз угорі. Легше — з колінами на підлозі.\nВідпочинок між підходами 30 с.', per:3, freq:'3 рази на тиждень'}]
 };
 const homeDone = (d, id) => (S.home[d] || []).includes(id);
 function homeCount(id){ return Object.values(S.home).filter(a => a.includes(id)).length; }
@@ -787,7 +804,7 @@ function homeScreen(){
     <p class="muted" style="margin:-6px 0 14px">Короткі вправи поза залом. Познач, коли зробила.</p>
     ${HOME[person].map(h => { const done = homeDone(today, h.id); const wk = days.filter(d => homeDone(d.k, h.id)).length;
       return `<div class="card"><div class="row"><span class="hicon">${ic(h.icon)}</span><div class="grow"><h2>${h.title}</h2><p class="muted small">${h.freq} · цього тижня ${wk} з ${h.per}</p></div></div>
-        <p style="margin:10px 0 12px">${esc(h.desc)}</p>
+        <p style="margin:10px 0 12px; white-space:pre-line">${esc(h.desc)}</p>
         <button class="warmcheck ${done ? 'done' : ''}" data-home="${h.id}"><i>${done ? '✓' : ''}</i>${done ? 'Сьогодні зроблено' : 'Зробила сьогодні'}</button>
         <div class="hweek">${days.map(d => `<span class="${homeDone(d.k, h.id) ? 'h' : ''} ${d.t ? 't' : ''}">${d.l}</span>`).join('')}</div>
         ${h.per === 7 ? `<p class="muted small" style="margin-top:8px">Днів поспіль: ${homeStreak(h.id)}</p>` : ''}</div>`; }).join('')}
@@ -840,7 +857,20 @@ async function certificate(){
 
 /* ---------- розумні фрази на заміри ---------- */
 /* ціль кожної людини: gain — набір м'язів ніг; keep — тримати вагу, верх тіла; loss — мінус жир */
-const GOALS = {p1: 'keep', p2: 'gain'};
+const GOALS = {p1: 'keep', p2: 'gain', p3: 'loss'};
+/* власні тексти людини (азартний тон для Lin4ik); якщо немає — загальні */
+const PHR = {p3: {
+  first: ['Старт зафіксовано. Відтепер кожен мінус — твій рекорд.'],
+  ideal: ['Подвійний удар: і талія, і вага вниз. Раунд за тобою!','Обидва показники в мінус. Томек вносить тебе в турнірну таблицю.'],
+  recomp: ['Вага стоїть, талія тане. Це рівень «профі».','Талія мінус, вага та сама — жир програє, мʼязи виграють.'],
+  waist: ['Рахунок: ти 1 — талія 0.','Талія здає позиції. Тисни далі!'],
+  weight: ['Цифра поповзла вниз. Азарт увімкнено?','Мінус на вагах. Ще трохи — і рекорд місяця.'],
+  updown: ['Вага вгору, талія вниз — це мʼязи або вода. Рахунок не зіпсовано.'],
+  vv: ['Літерка «В» виграла цей раунд. Реванш наступного тижня?','Два тижні вага вгору. «В» веде в рахунку — відіграємось?'],
+  up1: ['Один раунд нічого не вирішує — дивимось на наступний.'],
+  stable: ['Нічия з вагами. Наступний раунд — твій?']
+}};
+const ph = (key, base, seed) => { const o = PHR[person] && PHR[person][key]; return o ? seedPick(o, seed) : base; };
 const LEGS = ['Leg press 45°','V-squat','Hip thrust','Romanian deadlift','Seated leg curl','Leg extension','Hip adduction','Hip abduction'];
 const UPPER = ['Chest press','Lat pulldown','T-bar row','Chest-supported row','Multi Fly lateral raise','Reverse pec deck','Pec deck fly','Cable lateral raise','Biceps curl machine','Triceps extension'];
 const CM = .45, KG = .28;   // крок 0,5 см / 0,3 кг (з запасом на округлення)
@@ -873,7 +903,7 @@ function mInsight(){
   const sus = mSuspicious().map(x => x.k);
   if (sus.length){ const c = Object.assign({}, M[n - 1]); sus.forEach(k => { delete c[k]; }); M[n - 1] = c; }   // помилку не аналізуємо
   const last = M[n - 1], seed = last.date + person, goal = GOALS[person] || 'keep';
-  if (n === 1) return {t: 'first', tom: 'first', h: 'Точка відліку є', p: 'Наступного тижня Томек уже порівнюватиме.'};
+  if (n === 1) return {t: 'first', tom: 'first', h: 'Точка відліку є', p: ph('first', 'Наступного тижня Томек уже порівнюватиме.', M[0].date)};
   const avg = (arr, k) => { const v = arr.map(m => m[k]).filter(x => x != null); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null; };
   const prev = M.slice(Math.max(0, n - 3), n - 1);           // до двох попередніх
   const D = {}, T = {}, F = {};
@@ -906,13 +936,13 @@ function mInsight(){
     else if (legs <= -CM * 2 || badW('weight', -1, KG)) r = {t: 'meh', tom: 'shake', h: 'Мінус у вазі', p: 'Мʼязам потрібне будівельне. Томек радить перекус — і шейк.'};
     else if (D.weight >= KG && D.waist < CM) r = {t: 'good', tom: 'smug', h: `${fmtD(D.weight, 'кг')} без талії`, p: 'Набір у правильний бік.'};
   } else if (goal === 'loss'){
-    if (T.weight <= -KG && T.waist <= -CM) r = {t: 'good', tom: 'proud', h: `${fmtD(T.waist, 'см')} у талії і ${fmtD(T.weight, 'кг')}`, p: 'Ідеально. Томек шукає тобі пасок на дірочку менший.'};
-    else if (Math.abs(T.weight) < KG && T.waist <= -CM) r = {t: 'good', tom: 'proud', h: `Вага та сама, а талія ${fmtD(T.waist, 'см')}`, p: 'Жир іде, мʼязи приходять. Найкраща новина.'};
-    else if (D.waist <= -CM) r = {t: 'good', tom: 'smug', h: `${fmtD(D.waist, 'см')} у талії`, p: seedPick(['Мінус сантиметр — це вже видно в дзеркалі.','Сантиметр за сантиметром. Томек аплодує.'], seed)};
-    else if (D.weight <= -KG) r = {t: 'good', tom: 'smug', h: `${fmtD(D.weight, 'кг')}`, p: seedPick(['Пів кіло — як пачка масла. Тільки краще: її більше немає.','Стрілка вагів рушила. Так тримати.'], seed)};
-    else if (D.weight >= KG && D.waist <= -CM) r = {t: 'ok', tom: 'loaf', h: 'Вага вгору, талія вниз', p: 'Це мʼязи або вода. Не страшно.'};
-    else if (badW('weight', 1, KG) && T.waist >= 0) r = {t: 'meh', tom: 'wig', h: 'Вага росте другий тиждень', p: 'Схоже, літерка «В» трохи розгулялась. Томек не судить — Томек спостерігає.'};
-    else if (D.weight >= KG) r = {t: 'ok', tom: 'loaf', h: `${fmtD(D.weight, 'кг')}`, p: 'Буває: вода, сіль, гормони. Дивимось на наступний тиждень.'};
+    if (T.weight <= -KG && T.waist <= -CM) r = {t: 'good', tom: 'proud', h: `${fmtD(T.waist, 'см')} у талії і ${fmtD(T.weight, 'кг')}`, p: ph('ideal', 'Ідеально. Томек шукає тобі пасок на дірочку менший.', seed)};
+    else if (Math.abs(T.weight) < KG && T.waist <= -CM) r = {t: 'good', tom: 'proud', h: `Вага та сама, а талія ${fmtD(T.waist, 'см')}`, p: ph('recomp', 'Жир іде, мʼязи приходять. Найкраща новина.', seed)};
+    else if (D.waist <= -CM) r = {t: 'good', tom: 'smug', h: `${fmtD(D.waist, 'см')} у талії`, p: ph('waist', seedPick(['Мінус сантиметр — це вже видно в дзеркалі.','Сантиметр за сантиметром. Томек аплодує.'], seed), seed)};
+    else if (D.weight <= -KG) r = {t: 'good', tom: 'smug', h: `${fmtD(D.weight, 'кг')}`, p: ph('weight', seedPick(['Пів кіло — як пачка масла. Тільки краще: її більше немає.','Стрілка вагів рушила. Так тримати.'], seed), seed)};
+    else if (D.weight >= KG && D.waist <= -CM) r = {t: 'ok', tom: 'loaf', h: 'Вага вгору, талія вниз', p: ph('updown', 'Це мʼязи або вода. Не страшно.', seed)};
+    else if (badW('weight', 1, KG) && T.waist >= 0) r = {t: 'meh', tom: 'wig', h: 'Вага росте другий тиждень', p: ph('vv', 'Схоже, літерка «В» трохи розгулялась. Томек не судить — Томек спостерігає.', seed)};
+    else if (D.weight >= KG) r = {t: 'ok', tom: 'loaf', h: `${fmtD(D.weight, 'кг')}`, p: ph('up1', 'Буває: вода, сіль, гормони. Дивимось на наступний тиждень.', seed)};
   } else {
     if (upper >= CM && T.waist <= .25) r = {t: 'good', tom: 'proud', h: `${fmtD(upper, 'см')} у ${(T.biceps || 0) >= (T.chest || 0) ? 'біцепсі' : 'грудях'}`, p: upUp ? 'Верх росте, талія на місці, сила теж. Класика рекомпозиції.' : 'Верх росте, талія на місці. Класика рекомпозиції.'};
     else if (upper >= CM && badW('waist', 1, CM)) r = {t: 'meh', tom: 'wig', h: 'Росте все, разом із талією', p: 'Трохи стежимо за літеркою «В».'};
@@ -920,11 +950,12 @@ function mInsight(){
     else if (D.biceps >= CM || D.chest >= CM) r = {t: 'good', tom: 'smug', h: `${fmtD(Math.max(D.biceps || 0, D.chest || 0), 'см')} у ${(D.biceps || 0) >= (D.chest || 0) ? 'біцепсі' : 'грудях'}`, p: 'Плечі й спина працюють не дарма.'};
     else if (badW('waist', 1, CM)) r = {t: 'meh', tom: 'wig', h: 'Талія підросла', p: 'Два заміри поспіль. Трохи стежимо за літеркою «В».'};
   }
-  if (!r) r = {t: 'ok', tom: 'loaf', h: seedPick(['Стабільно','Тримаєш форму','Без різких рухів'], seed), p: 'Коливання до 0,5 — це вода й сніданок. Дивись на тенденцію за 3–4 тижні.'};
+  if (!r) r = {t: 'ok', tom: 'loaf', h: seedPick(['Стабільно','Тримаєш форму','Без різких рухів'], seed), p: ph('stable', 'Коливання до 0,5 — це вода й сніданок. Дивись на тенденцію за 3–4 тижні.', seed)};
   // накопичене від старту — у добрий бік для цієї цілі
   const good = goal === 'gain' ? [['thigh', 1, 'стегно'], ['hips', 1, 'стегна'], ['weight', 1, 'вага']] : goal === 'loss' ? [['waist', -1, 'талія'], ['weight', -1, 'вага'], ['hips', -1, 'стегна']] : [['biceps', 1, 'біцепс'], ['chest', 1, 'груди'], ['waist', -1, 'талія']];
   const best = good.map(([k, s, l]) => ({k, l, v: F[k], ok: s * F[k] >= (k === 'weight' ? .5 : 1)})).filter(x => x.ok);
   if (best.length) r.start = `Від першого заміру: ${best.map(x => `${x.l} ${fmtD(x.v, x.k === 'weight' ? 'кг' : 'см')}`).join(', ')}`;
+  if (person === 'p3' && last.waist != null && n >= 2){ const f = F.waist, tgt = Math.min(-.5, Math.floor((f - 1e-6) / .5) * .5); r.next = `Наступна ціль: талія ${fmtD(tgt, 'см')} від старту — лишилось ${fmt(Math.round((f - tgt) * 10) / 10)} см`; }
   return r;
 }
 /* добрий напрямок заміру для цілі людини: 1 — ріст добре, −1 — зменшення добре, 0 — байдуже */
@@ -933,7 +964,7 @@ function mInsightCard(){
   const r = mInsight(); if (!r) return '';
   const sus = mSuspicious(), M = [...S.measurements].sort((a, b) => a.date.localeCompare(b.date)), ld = M.length ? M[M.length - 1].date : '';
   const warn = sus.length ? `<div class="minsight meh">${tom('trio', 'tomins')}<div><b>Інспектори просять перевірити</b><p>${sus.map(x => `${x.l} ${fmtD(x.d, x.u)}`).join(', ')} — за такий час так не буває. Схоже на помилку стрічки, коми чи ваг. Поки цей замір не враховується.</p><button class="btn" style="margin-top:8px" data-act="editm" data-date="${ld}">${ic('pencil')} Змінити</button></div></div>` : '';
-  return warn + `<div class="minsight ${r.t}">${tom(r.tom, 'tomins')}<div><b>${esc(r.h)}</b><p>${esc(r.p)}</p>${r.start ? `<small>${esc(r.start)}</small>` : ''}</div></div>`;
+  return warn + `<div class="minsight ${r.t}">${tom(r.tom, 'tomins')}<div><b>${esc(r.h)}</b><p>${esc(r.p)}</p>${r.start ? `<small>${esc(r.start)}</small>` : ''}${r.next ? `<small class="next">${ic('flag')} ${esc(r.next)}</small>` : ''}</div></div>`;
 }
 
 /* ---------- заміри ---------- */

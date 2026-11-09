@@ -358,3 +358,11 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 /* поле без значення */
 .step.err{outline:2px solid var(--warn); border-radius:12px; animation:shake .35s}
 @keyframes shake{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+
+/* Lin4ik: програма в розробці */
+.card.soon{text-align:center}
+.card.soon h2{margin:4px 0 6px}
+.card.soon p{margin-bottom:14px; line-height:1.45}
+.card.soon .big + .big{margin-top:10px}
+.minsight small.next{color:var(--accent); font-weight:600; display:flex; align-items:center; gap:6px}
+.minsight small.next .ic{width:14px; height:14px}
