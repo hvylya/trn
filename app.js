@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.11.2';
+const APP_VERSION = '1.12.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -256,6 +256,8 @@ function remainingMin(){
   A.queue.forEach(id => { const st = effStep(A.day, id); if (st.kind === 'extra') return; const it = A.items[id]; const done = it ? it.sets.filter(s => s.done).length : 0; const left = st.sets - done; if (left > 0){ m += left * perSet(st); n++; } });
   return {min: m, ex: n};
 }
+const TOMEK_KG = 4;
+const tomeks = kg => { const n = Math.round(kg / TOMEK_KG); return `${fmtInt(n)} ${n % 10 === 1 && n % 100 !== 11 ? 'Томек' : [2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100) ? 'Томеки' : 'Томеків'}`; };
 function tonnageOf(items){
   let t = 0; items.forEach(it => { if (it.type !== 'weight' || it.unit !== 'reps') return; it.sets.forEach(s => { if (s.done && s.w && s.r) t += s.w * s.r * (it.side ? 2 : 1); }); }); return t;
 }
@@ -303,9 +305,39 @@ function chooseScreen(){
 }
 
 /* ---------- сьогодні ---------- */
+/* ---------- лист від Томека: у неділю — підсумок тижня, у понеділок — якщо не прочитала ---------- */
+function letterInfo(){
+  const wd = new Date().getDay(); if (wd !== 0 && wd !== 1) return null;
+  const ws = wd === 0 ? weekStart(Date.now()) : weekStart(Date.now() - 7 * 864e5), we = ws + 7 * 864e5;
+  if (S.letterSeen === ws) return null;
+  const inW = t => t >= ws && t < we, dayT = k => new Date(k + 'T12:00').getTime();
+  const W = S.workouts.filter(w => inW(w.start));
+  return {ws, wd, n: W.length, prs: W.reduce((a, w) => a + (w.prs || []).length, 0), ups: W.reduce((a, w) => a + (w.ups || 0), 0),
+    ton: W.reduce((a, w) => a + (w.tonnage || 0), 0), home: Object.entries(S.home).filter(([k, a]) => a.length && inW(dayT(k))).length,
+    meas: S.measurements.some(m => inW(dayT(m.date)))};
+}
+function letterHtml(){
+  const L = letterInfo(); if (!L) return '';
+  const plan = hasPlan(); let t, h;
+  if (!plan){ t = L.home ? 'smug' : 'peek'; h = L.home ? `Кор цього тижня: ${L.home} ${L.home === 1 ? 'раз' : L.home < 5 ? 'рази' : 'разів'}` : 'Новий тиждень — новий кор'; }
+  else if (L.n >= 3){ t = 'proud'; h = 'Повний тиждень!'; }
+  else if (L.n === 2){ t = 'smug'; h = 'Два з трьох — міцно'; }
+  else if (L.n === 1){ t = 'loaf'; h = 'Одне тренування — краще, ніж нуль'; }
+  else { t = 'sleep'; h = 'Тиждень відпочинку. Новий — новий шанс'; }
+  const ln = [];
+  if (plan) ln.push(`тренувань <b>${L.n}</b> з 3`);
+  if (L.prs) ln.push(`рекордів <b>${L.prs}</b>`);
+  if (L.ups) ln.push(`вага вгору у <b>${L.ups}</b> вправах`);
+  if (L.ton) ln.push(`піднято <b>${tomeks(L.ton)}</b>`);
+  if (L.home && plan) ln.push(`удома <b>${L.home}</b>`);
+  const mb = L.meas ? '' : `<button class="btn" data-act="addm">${ic('ruler')} ${L.wd === 0 ? 'Неділя — день замірів' : 'Внести заміри'}</button>`;
+  return `<div class="letter">${tom(t, 'tomban')}<div class="grow"><small>Лист від Томека · ${L.wd === 0 ? 'підсумок тижня' : 'минулий тиждень'}</small><b>${h}</b>${ln.length ? `<p>${ln.join(' · ')}</p>` : ''}
+    <div class="row wrap" style="gap:8px; margin-top:8px">${mb}<button class="btn ghost" data-act="letterok" data-ws="${L.ws}">Прочитала</button></div></div></div>`;
+}
 const hasPlan = () => P.days.some(d => (d[person] || []).length);
 function soonScreen(){
   return `<div class="top">${tom('logo','tomhead')}<h1>Привіт, ${esc(who())}</h1>${gear()}</div>
+    ${letterHtml()}
     <div class="card soon">${tom('sideeye','tomhero')}
       <h2>Де моя програма?</h2>
       <p>Томек складає її під тебе, а не з шаблону. Поки що можна вже грати: кор удома приносить ачівки, а заміри — точку старту, з якою потім буде що порівнювати.</p>
@@ -332,6 +364,7 @@ function todayScreen(){
       <span class="pill">${ic('flame')} Серія: ${streak} ${streak === 1 ? 'тиждень' : streak >= 2 && streak <= 4 ? 'тижні' : 'тижнів'}${si.frozen ? ` · ${ic('snow')}` : ''}</span>
       ${inDeload() ? `<span class="pill">${ic('feather')} Легкий тиждень</span>` : ''}
     </div>
+    ${letterHtml()}
     ${bannersHtml(bw)}
     ${backupOld ? `<div class="banner">${ic('save')} <span class="grow">${S.lastBackup ? `Остання резервна копія ${Math.floor((Date.now() - S.lastBackup) / 864e5)} дн. тому` : 'Резервної копії ще немає'}</span><button class="btn" data-act="backup">Зберегти</button></div>` : ''}
     <div class="card">
@@ -443,7 +476,7 @@ function workoutScreen(){
   } else {
     const hdr = `<div class="sethdr"><span>#</span><span>${st.type === 'weight' ? 'Вага, кг' : ''}</span><span>${st.unit === 'sec' ? 'Секунди' : st.unit === 'm' ? 'Метри' : 'Повтори'}${st.side ? '/бік' : ''}</span><span></span></div>`;
     rows = `<div class="sets">${hdr}${it.sets.map((s, i) => `<div class="set ${s.done ? 'done' : ''}"><span class="n">${i + 1}</span>
-      ${st.type === 'weight' ? stepper(i, 'w', s.w, 'кг', st.step) : `<span class="muted small" style="text-align:center">${st.type === 'body' ? 'вага тіла' : ''}</span>`}
+      ${st.type === 'weight' ? stepper(i, 'w', s.w, 'кг', st.step) : st.unit === 'sec' && !s.done ? `<button class="holdbtn" data-act="hold" data-i="${i}">${ic('play')} Таймер</button>` : `<span class="muted small" style="text-align:center">${st.type === 'body' ? 'вага тіла' : ''}</span>`}
       ${stepper(i, 'r', s.r, unitR, st.unit === 'sec' ? 5 : st.unit === 'm' ? 5 : 1)}
       <button class="check" data-act="done" data-i="${i}" aria-label="підхід ${i + 1} зроблено">${ic('check')}</button></div>`).join('')}</div>`;
   }
@@ -476,6 +509,7 @@ function workoutScreen(){
     </div>
     ${nextIsExtra ? `<p class="muted small" style="text-align:center">Основне тренування — до кінця цієї вправи. Далі «Якщо є час».</p>` : ''}
     <div class="rest" id="rest" hidden></div>
+    <div class="rest hold" id="hold" hidden></div>
     <div class="wnav"><div>
       ${navButtons(st, isLast, nextIsExtra)}
     </div></div>`;
@@ -547,6 +581,46 @@ function tick(){
 }
 setInterval(tick, 1000);
 
+/* ---------- таймер утримання (планка тощо): 3 с підготовки → відлік → сигнал → підхід зараховано ---------- */
+let holdIv = null;
+function holdStart(i){
+  const A = S.active, id = A.queue[A.idx], st = effStep(A.day, id), s = A.items[id].sets[i];
+  const target = Math.max(5, s.r || st.min || 20);
+  A.restEnd = null; A.hold = {i, id, target, sides: st.side ? 2 : 1, side: 1, prepEnd: Date.now() + 3000, go: false};
+  try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  save(); render(); clearInterval(holdIv); holdIv = setInterval(holdTick, 250); holdTick();
+}
+function holdStop(save1){
+  const A = S.active, H = A && A.hold; clearInterval(holdIv); holdIv = null; if (!H) return;
+  A.hold = null; const hb = document.getElementById('hold'); if (hb){ hb.hidden = true; hb.innerHTML = ''; }
+  if (!save1 || (!H.go && H.side === 1)){ save(); render(); return; }   // стоп під час підготовки = скасування
+  const el = H.go ? Math.round((Date.now() - H.prepEnd) / 1000) : 0;
+  const sec = H.side > 1 || el >= H.target ? H.target : Math.max(1, el);
+  const it = A.items[H.id], s = it && it.sets[H.i]; if (!s){ save(); render(); return; }
+  s.r = sec; if (A.queue[A.idx] !== H.id) A.idx = A.queue.indexOf(H.id);
+  if (!s.done) markDone(H.i); else { save(); render(); }
+}
+function holdTick(){
+  const A = S.active, H = A && A.hold, hb = document.getElementById('hold');
+  if (!H){ clearInterval(holdIv); holdIv = null; return; }
+  if (!hb) return;
+  hb.hidden = false;
+  if (!hb.firstElementChild) hb.innerHTML = `<div><span id="holdlbl"></span><button data-act="holdstop">Стоп</button><button data-act="holdx" aria-label="Скасувати таймер">${ic('x')}</button></div>`;
+  const now = Date.now(), side = H.sides > 1 ? `Бік ${H.side} · ` : '';
+  let txt;
+  if (now < H.prepEnd) txt = `${side}Приготуйся… <b>${Math.ceil((H.prepEnd - now) / 1000)}</b>`;
+  else {
+    if (!H.go){ H.go = true; beep(); }
+    const left = H.target - (now - H.prepEnd) / 1000;
+    if (left <= 0){
+      try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch(e){}
+      beep(); flash();
+      if (H.side < H.sides){ H.side++; H.prepEnd = now + 5000; H.go = false; save(); txt = `Інший бік… <b>5</b>`; }
+      else { holdStop(true); return; }
+    } else txt = `${side}Тримай <b>${mmss(left)}</b>`;
+  }
+  const lbl = document.getElementById('holdlbl'); if (lbl && lbl.dataset.t !== txt){ lbl.innerHTML = `${ic('timer')} ${txt}`; lbl.dataset.t = txt; }
+}
 function flash(){ const f = document.createElement('div'); f.className = 'flash'; document.body.appendChild(f); setTimeout(() => f.remove(), 2300); }
 function restFor(st){
   if (st.kind === 'core' || st.type === 'body') return S.settings.restCore;
@@ -674,7 +748,7 @@ function finishScreen(){
       <div class="stat"><b>${w.items.filter(it => it.kind !== 'warm').length}</b><span>вправ</span></div>
       <div class="stat"><b>${w.prs.length}</b><span>${w.prs.length === 1 ? 'рекорд' : 'рекордів'}</span></div>
     </div>
-    <p class="muted small" style="text-align:center;margin:-6px 0 12px">Піднято загалом: ${fmtInt(w.tonnage)} кг${f.evening ? ` · шейк №${shakes()}` : ''}</p>
+    <p class="muted small" style="text-align:center;margin:-6px 0 12px">Піднято загалом: ${fmtInt(w.tonnage)} кг — це ${tomeks(w.tonnage)}${f.evening ? ` · шейк №${shakes()}` : ''}</p>
     ${f.ups || f.firsts ? `<div class="today">${f.ups ? `<span>${ic('chart')} Додала вагу: <b>${f.ups}</b> ${f.ups === 1 ? 'вправа' : f.ups < 5 ? 'вправи' : 'вправ'}</span>` : ''}${f.firsts ? `<span>${ic('pencil')} Нові точки відліку: <b>${f.firsts}</b></span>` : ''}</div>` : ''}
     ${w.prs.map(p => `<div class="newach"><span>${ic('trophy')}</span><div><b>${esc(nm(p.en))}</b><br><small class="muted">${fmt(p.w)} кг × ${fmt(p.r)}</small></div></div>`).join('')}
     ${f.fresh.map(id => { const a = achById(id); return `<div class="newach"><span>${ic(a[1])}</span><div><b>Нова ачівка!</b><br>${esc(a[2])}</div></div>`; }).join('')}
@@ -1062,6 +1136,7 @@ function render(){
   app.innerHTML = (map[screen] || todayScreen)();
   app.classList.toggle('inworkout', screen === 'workout');
   tick();
+  if (S && S.active && S.active.hold && !holdIv){ holdIv = setInterval(holdTick, 250); holdTick(); }
 }
 
 /* ---------- події ---------- */
@@ -1099,6 +1174,10 @@ document.addEventListener('click', e => {
       const it = A.items[A.queue[A.idx]], s = it.sets[+d.i]; const step = +d.s * (d.act === 'dec' ? -1 : 1);
       const cur = s[d.f] == null ? (d.f === 'w' ? 0 : 0) : s[d.f];
       s[d.f] = Math.max(0, Math.round((cur + step) * 100) / 100); save(); render(); break; }
+    case 'letterok': S.letterSeen = +d.ws; save(); render(); break;
+    case 'hold': holdStart(+d.i); break;
+    case 'holdstop': holdStop(true); break;
+    case 'holdx': holdStop(false); break;
     case 'rest30': if (A && A.restEnd){ A.restEnd = Math.max(A.restEnd, Date.now()) + 30000; A.restBeeped = false; save(); tick(); } break;
     case 'restx': if (A){ A.restEnd = null; save(); const r = document.getElementById('rest'); if (r){ r.hidden = true; r.innerHTML = ''; } } break;
     case 'usealt': { const id = A.queue[A.idx]; A.items[id].useAlt = true; fillSets(id); save(); closeSheet(); render(); break; }
