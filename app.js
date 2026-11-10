@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.13.2';
+const APP_VERSION = '1.14.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -76,6 +76,23 @@ const IP = {
   dot:'<circle cx="12" cy="12" r="7.5" fill="currentColor"/><path d="M8.5 12.3l2.4 2.4 4.6-4.9" stroke="var(--bg)"/>',
   plank:'<circle cx="19" cy="8.5" r="1.8"/><path d="M17.2 9.6 4 14.5M15.5 10.4v4.6h3.5M4 14.5v1.5"/>',
   bug:'<circle cx="19" cy="15" r="1.8"/><path d="M5 16h12M14 16l-2-8M8 16l-2.5-7M12 8l2 .5M5.5 9l2 .5"/>',
+  journal:'<path d="M5 3.5h12a2 2 0 0 1 2 2V20.5H7a2 2 0 0 1-2-2z"/><path d="M5 18.5a2 2 0 0 1 2-2h12"/><path d="M9 13V7.5l2 1.5h2l2-1.5V13a3 2.8 0 0 1-6 0z"/>',
+  kitten:'<path d="M7 12.5V8l3 2.2h4L17 8v4.5a5 4.8 0 0 1-10 0z"/><path d="M10 13.4h.01M14 13.4h.01" stroke-width="2.6"/><path d="M11.3 15.3h1.4"/>',
+  murr:'<path d="M5 10.5V4.2l4 3h6l4-3v6.3a7 6.8 0 0 1-14 0z"/><path d="M8.4 12q1.3-1.4 2.6 0M13 12q1.3-1.4 2.6 0"/><path d="M2.5 12.5l3 .5M2.8 15.5l2.8-.8M21.5 12.5l-3 .5M21.2 15.5l-2.8-.8"/>',
+  big:'<path d="M5 10.5V4.2l4 3h6l4-3v6.3a7 6.8 0 0 1-14 0z"/><path d="M7.3 10.6h4.1v1.2a2 1.8 0 0 1-4.1 0zM12.6 10.6h4.1v1.2a2 1.8 0 0 1-4.1 0z" fill="currentColor"/><path d="M10.5 15.5q1.5.8 3 0"/>',
+  tiger:'<path d="M5 10.5V4.2l4 3h6l4-3v6.3a7 6.8 0 0 1-14 0z"/><path d="M12 7.5v2M5.2 12.2h2.6M18.8 12.2h-2.6M5.8 15l2.2-.8M18.2 15l-2.2-.8"/><path d="M10 12.2h.01M14 12.2h.01" stroke-width="2.8"/>',
+  liftup:'<path d="M3 15.5h2.5M18.5 15.5H21M5.5 12.5v6M18.5 12.5v6M7.5 13.5v4M16.5 13.5v4M7.5 15.5h9"/><path d="M12 10.5V3.5M9 6.5l3-3 3 3"/>',
+  kb1k:'<path d="M8.5 9V7a3.5 3.5 0 0 1 7 0v2"/><path d="M6.6 9.5h10.8a7 7 0 1 1-10.8 0z"/><path d="M10 14.5h.01M14 14.5h.01" stroke-width="2.8"/><path d="M11 17.3h2"/>',
+  kb10k:'<path d="M7.5 6.5 9 2.8l3 2.4 3-2.4 1.5 3.7z"/><path d="M6.6 9.5h10.8a7 7 0 1 1-10.8 0z"/><path d="M10 14.5h.01M14 14.5h.01" stroke-width="2.8"/><path d="M11 17.3h2"/>',
+  homecat:'<path d="M3 11 12 3.5 21 11M5.5 9V20.5h13V9"/><path d="M9.5 20.5v-6.8l1.2 1h2.6l1.2-1v6.8"/>',
+  mat:'<path d="M2.5 19.5h11.5"/><circle cx="17" cy="15.5" r="4.5"/><path d="M17 13.3a2.2 2.2 0 1 1-2.2 2.2"/>',
+  cal4:'<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8.5 13.5h.01M12 13.5h.01M15.5 13.5h.01M8.5 17h.01" stroke-width="2.8"/>',
+  lark:'<path d="M3 18h18"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="M12 8.5V6M5.6 11.6 4 10M18.4 11.6 20 10M3.5 15h1.8M18.7 15h1.8"/>',
+  owl:'<path d="M19 14.5A8 8 0 1 1 10 4.5a6.5 6.5 0 0 0 9 10z"/><path d="M17 3.5v3M15.5 5h3"/>',
+  shake10:'<path d="M8.5 7.5h7l-1 13.5h-5z"/><path d="M8 7.5h8M13 7.5 15.5 2.5"/><path d="M9.1 12h5.8"/>',
+  shock:'<path d="M5 10.5V4.2l4 3h6l4-3v6.3a7 6.8 0 0 1-14 0z"/><circle cx="9.5" cy="11.2" r="1.3"/><circle cx="14.5" cy="11.2" r="1.3"/><ellipse cx="12" cy="15.1" rx="1.1" ry="1.4"/>',
+  peek:'<path d="M3 15.5h18"/><path d="M7 15.5V9.5l3 2h4l3-2v6"/><path d="M10.2 13.6h.01M13.8 13.6h.01" stroke-width="2.6"/><path d="M5 19h3M10.5 19h3M16 19h3"/>',
+  qmark:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.7M12 17h.01"/>',
   timer:'<circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.5 2M9.5 2.5h5"/>'
 };
 const gear = () => `<button class="iconbtn" data-act="settings" aria-label="Налаштування">${ic('gear')}</button>`;
@@ -90,7 +107,13 @@ const LS = {
 let person = (() => { try { const u = new URLSearchParams(location.search).get('u'); if (u && P.people[u]){ LS.set('trn:person', u); return u; } } catch(e){} return LS.get('trn:person', null); })();
 let S = null;
 const blank = () => ({ v:1, settings:{duration:90, restHeavy:150, restMain:120, restIso:90, restCore:45, fun:"normal"}, blockStart:null, blockLen:8, mnotes:{}, home:{}, deloadUntil:null, deloadSnooze:null, cpSeen:{}, workouts:[], active:null, measurements:[], ach:{}, lastBackup:null });
-function load(){ S = Object.assign(blank(), person ? LS.get('trn:data:' + person, {}) : {}); S.settings = Object.assign(blank().settings, S.settings); if (!S.settings.durTouched) S.settings.duration = 90; }
+function load(){ S = Object.assign(blank(), person ? LS.get('trn:data:' + person, {}) : {}); S.settings = Object.assign(blank().settings, S.settings); if (!S.settings.durTouched) S.settings.duration = 90; try { migrateAch(); } catch(e){} }
+function migrateAch(){
+  if (!person || S.achV === 2) return;
+  Object.keys(S.ach || {}).forEach(id => { if (!ACH.some(a => a[0] === id)) delete S.ach[id]; });
+  ACH.forEach(([id,,, t]) => { if (!S.ach[id]){ let ok = false; try { ok = !!t(S); } catch(e){} if (ok) S.ach[id] = Date.now(); } });
+  S.achV = 2; save();
+}
 function save(){ if (person) LS.set('trn:data:' + person, S); }
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
 const THEMES = [['nord','Nord','#2e3440','#88c0d0'],['dawn','Rosé Pine Dawn','#faf4ed','#d7827e'],['forest','Everforest Light','#fdf6e3','#35a77c'],['kanagawa','Kanagawa','#1f1f28','#d27e99'],['gruvbox','Gruvbox','#282828','#fe8019'],['tokyo','Tokyo Night','#1a1b26','#7aa2f7']];
@@ -257,37 +280,38 @@ function remainingMin(){
   A.queue.forEach(id => { const st = effStep(A.day, id); if (st.kind === 'extra') return; const it = A.items[id]; const done = it ? it.sets.filter(s => s.done).length : 0; const left = st.sets - done; if (left > 0){ m += left * perSet(st); n++; } });
   return {min: m, ex: n};
 }
-const TOMEK_KG = 4;
 const tomeks = kg => { const n = Math.round(kg / TOMEK_KG); return `${fmtInt(n)} ${n % 10 === 1 && n % 100 !== 11 ? 'Томек' : [2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100) ? 'Томеки' : 'Томеків'}`; };
 function tonnageOf(items){
   let t = 0; items.forEach(it => { if (it.type !== 'weight' || it.unit !== 'reps') return; it.sets.forEach(s => { if (s.done && s.w && s.r) t += s.w * s.r * (it.side ? 2 : 1); }); }); return t;
 }
 
 /* ---------- досягнення ---------- */
+const TOMEK_KG = 4;
+const homeDays = () => Object.values(S.home || {}).filter(a => a && a.length).length;
 const ACH = [
-  ['first','flag','Перше тренування', s => s.workouts.length >= 1],
-  ['w10','medal','10 тренувань', s => s.workouts.length >= 10],
-  ['w25','medal','25 тренувань', s => s.workouts.length >= 25],
-  ['w50','medal','50 тренувань', s => s.workouts.length >= 50],
-  ['w100','trophy','100 тренувань', s => s.workouts.length >= 100],
+  /* [id, іконка, назва, умова, людина (не використовується), секретна] */
+  ['first','journal','Записана в журнал Томека', s => s.workouts.length >= 1],
+  ['w10','kitten','Кошеня · 10 тренувань', s => s.workouts.length >= 10],
+  ['w25','murr','Мурчик · 25 тренувань', s => s.workouts.length >= 25],
+  ['w50','big','Котяра · 50 тренувань', s => s.workouts.length >= 50],
+  ['w100','tiger','Тигр · 100 тренувань', s => s.workouts.length >= 100],
   ['week','calok','Повний тиждень: 3 з 3', s => [...weekCounts().values()].some(v => v >= 3)],
   ['month','flame','Місяць без пропусків', s => streakWeeks() >= 4],
-  ['block','grad','Блок завершено', s => s.blockStart && blockWeek() > blockLen() && s.workouts.filter(w => w.start >= s.blockStart).length >= 20],
+  ['block','grad','Блок завершено', s => s.blockStart && blockWeek() > blockLen() && s.workouts.filter(w => w.start >= s.blockStart).length >= blockLen() * 2],
   ['pr1','star','Перший рекорд', s => s.workouts.some(w => (w.prs || []).length)],
   ['pr10','stars','10 рекордів', s => s.workouts.reduce((a, w) => a + (w.prs || []).length, 0) >= 10],
-  ['up10','chart','+10 разів додала вагу', s => s.workouts.reduce((a, w) => a + (w.ups || 0), 0) >= 10],
-  ['t5','gym','5 тонн за тренування', s => s.workouts.some(w => w.tonnage >= 5000)],
-  ['t100','kettle','100 тонн загалом', s => s.workouts.reduce((a, w) => a + (w.tonnage || 0), 0) >= 100000],
-  ['extra','timer','Встигла «Якщо є час»', s => s.workouts.some(w => w.items.some(it => it.kind === 'extra' && it.sets.some(x => x.done)))],
-  ['shake','bottle','10 вечірніх шейків', s => s.workouts.filter(w => new Date(w.end).getHours() >= 16).length >= 10],
+  ['up10','liftup','Ваговий підйомник · +вага 10 разів', s => s.workouts.reduce((a, w) => a + (w.ups || 0), 0) >= 10],
+  ['tom1k','kb1k','Тисяча Томеків · 4 т загалом', s => s.workouts.reduce((a, w) => a + (w.tonnage || 0), 0) >= 1000 * TOMEK_KG],
+  ['tom10k','kb10k','10 000 Томеків · 40 т загалом', s => s.workouts.reduce((a, w) => a + (w.tonnage || 0), 0) >= 10000 * TOMEK_KG],
+  ['home10','homecat','Домашня кішка · 10 днів удома', s => homeDays() >= 10],
+  ['home30','mat','Килимок — мій дім · 30 днів', s => homeDays() >= 30],
   ['m1','ruler','Перші заміри', s => s.measurements.length >= 1],
-  ['neck7','head','Шия 7 днів поспіль', s => homeStreak('neck') >= 7, 'p1'],
-  ['calf10','stairs','Ікри вдома 10 разів', s => homeCount('calf') >= 10],
-  ['bal10','oneleg','Фламінго: баланс 10 разів', s => homeCount('balance') >= 10, 'p2'],
-  ['core1','plank','Перший кор удома', s => coreDays() >= 1, 'p3'],
-  ['core10','plank','Кор удома: 10 днів', s => coreDays() >= 10, 'p3'],
-  ['core30','bug','Кор удома: 30 днів', s => coreDays() >= 30, 'p3'],
-  ['m4','calok','Заміри 4 тижні поспіль', s => { const ws = new Set(s.measurements.map(m => weekStart(new Date(m.date).getTime()))); let k = weekStart(Date.now()), n = 0; if (!ws.has(k)) k = weekStart(k - 3 * 864e5); while (ws.has(k)){ n++; k = weekStart(k - 3 * 864e5); } return n >= 4; }]
+  ['m4','cal4','Чотири неділі поспіль', s => { const ws = new Set(s.measurements.map(m => weekStart(new Date(m.date).getTime()))); let k = weekStart(Date.now()), n = 0; if (!ws.has(k)) k = weekStart(k - 3 * 864e5); while (ws.has(k)){ n++; k = weekStart(k - 3 * 864e5); } return n >= 4; }],
+  ['lark','lark','Жайворонок · тренування до 8:00', s => s.workouts.some(w => new Date(w.start).getHours() < 8), null, true],
+  ['owl','owl','Нічна сова · тренування після 20:00', s => s.workouts.some(w => new Date(w.start).getHours() >= 20), null, true],
+  ['shake','shake10','Шейк №10 · 10 вечірніх тренувань', s => s.workouts.filter(w => new Date(w.end).getHours() >= 16).length >= 10, null, true],
+  ['wow','shock','Томек у шоці · вага одразу +10%', s => s.workouts.some(w => w.wow), null, true],
+  ['comeback','peek','Повернення · після перерви 10+ днів', s => s.workouts.some((w, i) => i && w.start - s.workouts[i - 1].end > 10 * 864e5), null, true]
 ];
 const achList = () => ACH.filter(a => !a[4] || a[4] === person);
 /* після видалення: прибрати ачівки, умова яких більше не виконується */
@@ -672,7 +696,7 @@ function funPhrase(st, it){
     const nowW = mx(it.sets), wasW = mx(l.it.sets), ever = Math.max(...es.map(e => mx(e.it.sets)));
     const mile = MILES.filter(m => m > ever && m <= nowW).pop();
     if (mile) return [`Перші ${mile} кг! ${pick(FUN.milestone)}`, 'yay', 5];
-    if (wasW > 0 && nowW >= wasW * 1.1 && nowW - wasW >= 2 * st.step) return [pick(FUN.wow), 'ogo', 4];
+    if (wasW > 0 && nowW >= wasW * 1.1 && nowW - wasW >= 2 * st.step){ S.active.wow = true; return [pick(FUN.wow), 'ogo', 4]; }
     if (es.length >= 2){ const w2 = mx(es[es.length - 2].it.sets); if (w2 > 0 && wasW > w2 && nowW > wasW) return [pick(FUN.streak), 'smug', 3]; }
   }
   const sc = sets => sets.filter(x => x.done).reduce((a, x) => a + (st.type === 'weight' ? (x.w || 0) * (x.r || 0) : (x.r || 0)), 0);
@@ -743,7 +767,7 @@ function finishWorkout(){
   const items = A.queue.map(id => { const st = effStep(A.day, id), x = A.items[id]; return x ? {en: st.en, kind: st.kind, type: st.type, unit: st.unit, side: !!st.side, alt: !!st.isAlt, feel: x.feel || null, sets: x.sets.filter(s => s.done).map(s => ({w: s.w ?? null, r: s.r ?? null, done: true, ...(s.at ? {at: s.at} : {})}))} : null; }).filter(x => x && x.sets.length);
   let ups = 0, firsts = 0;
   items.forEach(it => { if (it.kind === 'warm') return; const l = lastFor(it.en); if (!l){ firsts++; return; } if (it.type !== 'weight') return; if (l.it.sets[0] && it.sets[0] && it.sets[0].w > l.it.sets[0].w) ups++; });
-  const rec = { id: 'w' + A.start, day: A.day, start: A.start, end: Date.now(), items, prs: A.prs, ups, tonnage: tonnageOf(items), sets: items.filter(it => it.kind !== 'warm').reduce((a, it) => a + it.sets.length, 0), mood: null, note: '', deload: !!inDeload() };
+  const rec = { id: 'w' + A.start, day: A.day, start: A.start, end: Date.now(), items, prs: A.prs, ups, tonnage: tonnageOf(items), sets: items.filter(it => it.kind !== 'warm').reduce((a, it) => a + it.sets.length, 0), mood: null, note: '', deload: !!inDeload(), wow: !!A.wow };
   if (!S.blockStart){ S.blockStart = A.start; if (person === 'p3') S.blockLen = Math.max(1, Math.floor((P3_END - weekStart(A.start)) / 6048e5)); }
   S.workouts.push(rec); S.active = null;
   const fresh = checkAch();
@@ -767,7 +791,7 @@ function finishScreen(){
     <p class="muted small" style="text-align:center;margin:-6px 0 12px">Піднято загалом: ${fmtInt(w.tonnage)} кг — це ${tomeks(w.tonnage)}${f.evening ? ` · шейк №${shakes()}` : ''}</p>
     ${f.ups || f.firsts ? `<div class="today">${f.ups ? `<span>${ic('chart')} Додала вагу: <b>${f.ups}</b> ${f.ups === 1 ? 'вправа' : f.ups < 5 ? 'вправи' : 'вправ'}</span>` : ''}${f.firsts ? `<span>${ic('pencil')} Нові точки відліку: <b>${f.firsts}</b></span>` : ''}</div>` : ''}
     ${w.prs.map(p => `<div class="newach"><span>${ic('trophy')}</span><div><b>${esc(nm(p.en))}</b><br><small class="muted">${fmt(p.w)} кг × ${fmt(p.r)}</small></div></div>`).join('')}
-    ${f.fresh.map(id => { const a = achById(id); return `<div class="newach"><span>${ic(a[1])}</span><div><b>Нова ачівка!</b><br>${esc(a[2])}</div></div>`; }).join('')}
+    ${f.fresh.map(id => { const a = achById(id); return `<div class="newach"><span>${ic(a[1])}</span><div><b>${a[5] ? 'Секретна ачівка!' : 'Нова ачівка!'}</b><br>${esc(a[2])}</div></div>`; }).join('')}
     <div class="card"><h3>Як пройшло?</h3>
       <div class="moods">${MOODS.map(([m, i, l]) => `<button data-mood="${m}" aria-pressed="${w.mood === m}" aria-label="${l}">${ic(i)}<small>${l}</small></button>`).join('')}</div>
       <textarea id="wnote" placeholder="Нотатка: як почувалась, що відзначити…">${esc(w.note)}</textarea>
@@ -868,7 +892,8 @@ function progressScreen(){
     <div class="card" style="margin-top:12px"><h3>Мʼязи цього тижня</h3>${weekMap()}</div>
     <div class="card"><h3>Блок: ${bw <= blockLen() ? `тиждень ${bw} з ${blockLen()}` : 'завершено'}</h3><div class="bar"><i style="width:${Math.min(100, Math.round(Math.min(bw, blockLen()) / blockLen() * 100))}%"></i></div>
       ${calMonth(now.getFullYear(), now.getMonth(), days)}${calMonth(pm.getFullYear(), pm.getMonth(), days)}</div>
-    <div class="card"><h3>Ачівки · ${unlocked} з ${achList().length}</h3><div class="achs">${achList().map(([id, e, t]) => `<div class="ach ${S.ach[id] ? '' : 'lock'}"><span>${ic(S.ach[id] ? e : 'lock')}</span>${esc(t)}</div>`).join('')}</div></div>
+    <div class="card"><h3>Ачівки · ${unlocked} з ${achList().length}</h3><div class="achs">${achList().map(([id, e, t,,, sec]) => { const [n1, n2] = t.split(' · '); const got = S.ach[id];
+      return `<div class="ach ${got ? '' : 'lock'}"><span>${ic(got ? e : sec ? 'qmark' : 'lock')}</span>${got || !sec ? `${esc(n1)}${n2 ? `<small>${esc(n2)}</small>` : ''}` : '???<small>секретна</small>'}</div>`; }).join('')}</div></div>
     <div class="card"><h3>Вага по вправі</h3>${exs.length ? `<select data-act="chartex" aria-label="Вправа">${exs.map(e => `<option value="${esc(e)}" ${e === chartEx ? 'selected' : ''}>${esc(nm(e))}</option>`).join('')}</select>${lineChart(pts, 'найбільша вага за тренування, кг')}` : '<p class="muted small">Графік зʼявиться після першого тренування.</p>'}</div>
     ${tabbar()}`;
 }
