@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.13.1';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -143,7 +143,7 @@ function go(s){ screen = s; if (['today','home','history','progress','measure'].
 
 function toast(html, cls, ms){
   const len = String(html).replace(/<[^>]+>/g, '').length;
-  ms = ms || (cls === 'pr' ? 5500 : cls === 'fun' ? Math.min(5500, Math.max(3500, 2000 + len * 45)) : 2000);
+  ms = ms || (cls === 'pr' ? 7000 : cls === 'fun' ? Math.min(7000, Math.max(4500, 2500 + len * 55)) : 2500);
   toast.end = Date.now() + ms;
   const n = toast.n = (toast.n || 0) + 1;
   toastEl.innerHTML = `<div class="tcard ${cls || ''}">${html}<i class="tbar" style="animation-duration:${ms}ms"></i></div>`;
@@ -157,7 +157,7 @@ function hideToast(n){
 }
 /* фраза з емодзі в кінці → емодзі окремо зліва (місце для котика) */
 const EMO = /\s*(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*)\s*$/u;
-function sayIco(ico, title, sub, cls){ toast(`${ico ? `<span class="tico">${ico}</span>` : ''}<span class="tt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</span>`, cls || 'fun'); }
+function sayIco(ico, title, sub, cls, ms){ toast(`${ico ? `<span class="tico">${ico}</span>` : ''}<span class="tt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</span>`, cls || 'fun', ms); }
 function say(text, cls, sub, t){ const m = text.match(EMO); sayIco(t ? tom(t) : (m ? m[1] : ''), esc(m ? text.slice(0, m.index) : text), sub, cls); }
 toastEl.addEventListener('click', e => { if (!e.target.closest('button')) { clearTimeout(toast.t); hideToast(); } });
 (function(){ let x0 = null, y0 = 0, dx = 0, dy = 0;
@@ -216,7 +216,7 @@ const blockLen = () => person === 'p3' && !S.blockStart ? Math.max(1, Math.floor
 const isEvening = w => new Date(w.end).getHours() >= 16;
 const shakes = () => S.workouts.filter(isEvening).length;
 const inDeload = () => S.deloadUntil && Date.now() < S.deloadUntil;
-const COMPOUND = new Set(['V-squat','Leg press 45°','Romanian deadlift','Hip thrust','T-bar row','Lat pulldown','Chest-supported row','Chest press','Seated cable row','Cable pulldown','Dumbbell bench press','Back squat','Dumbbell RDL','Neutral-grip DB bench press','Static lunge']);
+const COMPOUND = new Set(['V-squat','Leg press 45°','Romanian deadlift','Hip thrust','T-bar row','Lat pulldown','Chest-supported row','Chest press','Seated cable row','Cable pulldown','Dumbbell bench press','Smith squat','Dumbbell RDL','Neutral-grip DB bench press','Static lunge']);
 /* сигнал розвантаження: 2 тижні без прогресу в більшості базових вправ, або два важкі тренування поспіль */
 function deloadSignal(){
   if (inDeload() || (S.deloadSnooze && Date.now() < S.deloadSnooze) || S.workouts.length < 6) return null;
@@ -284,9 +284,9 @@ const ACH = [
   ['neck7','head','Шия 7 днів поспіль', s => homeStreak('neck') >= 7, 'p1'],
   ['calf10','stairs','Ікри вдома 10 разів', s => homeCount('calf') >= 10],
   ['bal10','oneleg','Фламінго: баланс 10 разів', s => homeCount('balance') >= 10, 'p2'],
-  ['core1','plank','Перший кор-сет', s => homeCount('core') >= 1, 'p3'],
-  ['core10','plank','Кор удома 10 разів', s => homeCount('core') >= 10, 'p3'],
-  ['core30','bug','Кор удома 30 разів', s => homeCount('core') >= 30, 'p3'],
+  ['core1','plank','Перший кор удома', s => coreDays() >= 1, 'p3'],
+  ['core10','plank','Кор удома: 10 днів', s => coreDays() >= 10, 'p3'],
+  ['core30','bug','Кор удома: 30 днів', s => coreDays() >= 30, 'p3'],
   ['m4','calok','Заміри 4 тижні поспіль', s => { const ws = new Set(s.measurements.map(m => weekStart(new Date(m.date).getTime()))); let k = weekStart(Date.now()), n = 0; if (!ws.has(k)) k = weekStart(k - 3 * 864e5); while (ws.has(k)){ n++; k = weekStart(k - 3 * 864e5); } return n >= 4; }]
 ];
 const achList = () => ACH.filter(a => !a[4] || a[4] === person);
@@ -888,10 +888,12 @@ const HOME = {
        {id:'calf', icon:'stairs', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'}],
   p2: [{id:'calf', icon:'stairs', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'},
        {id:'balance', icon:'oneleg', title:'Баланс', desc:'Поки чистиш зуби, стій на одній нозі: по 30 с на кожну, двічі. Коліно мʼяке, погляд прямо, раковина поруч. Хитаєшся — так і має бути, саме це й тренує гомілкостоп.', per:5, freq:'5 днів на тиждень'}],
-  p3: [{id:'core', icon:'bug', title:'Кор на 7 хвилин', tech:['Dead bug','Bird dog'], desc:'Місця — як для килимка.\n1. Мертвий жук: 3 × 8 на кожну сторону. Поперек притиснутий до підлоги, видих — коли опускаєш.\n2. Птах-пес: 3 × 6 на кожну сторону, затримка 2 с. Корпус нерухомий, таз не повертається.\nВідпочинок між підходами 30 с.', per:3, freq:'3 рази на тиждень'}]
+  p3: [{id:'deadbug', icon:'bug', title:'Мертвий жук', tech:['Dead bug'], desc:'3 × 8 на кожну сторону. Поперек притиснутий до підлоги, видих — коли опускаєш руку й ногу. Відпочинок 30 с.', per:3, freq:'3 рази на тиждень'},
+       {id:'birddog', icon:'plank', title:'Птах-пес', tech:['Bird dog'], desc:'3 × 6 на кожну сторону, затримка 2 с. Корпус нерухомий, таз не повертається. Відпочинок 30 с.', per:3, freq:'3 рази на тиждень'}]
 };
 const homeDone = (d, id) => (S.home[d] || []).includes(id);
 function homeCount(id){ return Object.values(S.home).filter(a => a.includes(id)).length; }
+const coreDays = () => Object.values(S.home).filter(a => a.some(x => x === 'core' || x === 'deadbug' || x === 'birddog')).length;
 function homeStreak(id){ let d = new Date(), n = 0; if (!homeDone(iso(d), id)) d.setDate(d.getDate() - 1); while (homeDone(iso(d), id)){ n++; d.setDate(d.getDate() - 1); } return n; }
 function homeScreen(){
   const today = iso(new Date()), ws = weekStart(Date.now());
@@ -901,7 +903,7 @@ function homeScreen(){
     ${HOME[person].map(h => { const done = homeDone(today, h.id); const wk = days.filter(d => homeDone(d.k, h.id)).length;
       return `<div class="card"><div class="row"><span class="hicon">${ic(h.icon)}</span><div class="grow"><h2>${h.title}</h2><p class="muted small">${h.freq} · цього тижня ${wk} з ${h.per}</p></div></div>
         <p style="margin:10px 0 12px; white-space:pre-line">${esc(h.desc)}</p>
-        ${h.tech ? `<div class="row wrap" style="gap:8px; margin:-2px 0 12px">${h.tech.map(en => `<button class="btn" data-tech="${esc(en)}">${ic('book')} ${esc(nm(en))}</button>`).join('')}</div>` : ''}
+        ${h.tech ? `<div class="row wrap" style="gap:8px; margin:-2px 0 12px">${h.tech.map(en => `<button class="btn" data-tech="${esc(en)}">${ic('book')} ${h.tech.length === 1 ? 'Техніка' : esc(nm(en))}</button>`).join('')}</div>` : ''}
         <button class="warmcheck ${done ? 'done' : ''}" data-home="${h.id}"><i>${done ? '✓' : ''}</i>${done ? 'Сьогодні зроблено' : 'Зробила сьогодні'}</button>
         <div class="hweek">${days.map(d => `<span class="${homeDone(d.k, h.id) ? 'h' : ''} ${d.t ? 't' : ''}">${d.l}</span>`).join('')}</div>
         ${h.per === 7 ? `<p class="muted small" style="margin-top:8px">Днів поспіль: ${homeStreak(h.id)}</p>` : ''}</div>`; }).join('')}
@@ -1165,7 +1167,7 @@ document.addEventListener('click', e => {
   if (d.hist){ histSheet(d.hist); return; }
   if (d.mood){ const w = S.workouts.find(x => x.id === lastFinished.id); if (w){ w.mood = d.mood; save(); app.querySelectorAll('[data-mood]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mood === d.mood)); } return; }
   if (d.feel && S.active){ const it = S.active.items[S.active.queue[S.active.idx]]; it.feel = it.feel === d.feel ? null : d.feel; save(); render(); return; }
-  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
+  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 7000); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
   if (d.fun){ S.settings.fun = d.fun; save(); settingsSheet(); return; }
   if (d.theme){ LS.set('trn:theme', d.theme); applyTheme(); settingsSheet(); return; }
   if (d.dur){ S.settings.duration = +d.dur; S.settings.durTouched = true; save(); settingsSheet(); render(); return; }
@@ -1217,7 +1219,7 @@ document.addEventListener('click', e => {
       if (!any){ toast('Заповни хоча б одне поле'); break; }
       S.measurements = S.measurements.filter(x => x.date !== date && x.date !== d.orig); S.measurements.push(m);
       const fresh = checkAch(); save(); closeSheet(); render();
-      window.scrollTo(0, 0); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2])); else toast('Заміри збережено ✓'); break; }
+      window.scrollTo(0, 0); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 7000); else toast('Заміри збережено ✓'); break; }
     case 'editm': addMeasureSheet(d.date); break;
     case 'delm': { if (!t.classList.contains('armed')){ t.classList.add('armed'); t.innerHTML = `${ic('trash')} Точно видалити? Натисни ще раз`; break; }
       const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone, ach: Object.assign({}, S.ach)}; recheckAch(); save(); closeSheet(); render();
