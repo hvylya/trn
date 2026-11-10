@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.15.1';
+const APP_VERSION = '1.15.2';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -457,11 +457,10 @@ function fillSets(id){
 /* фото тренажерів (офлайн, з кешу застосунку) */
 const PHOTO = {'V-squat':'vsquat-drax','Leg press 45°':'legpress-hack','Calf press 45°':'legpress-hack','Hip thrust':'hipthrust-drax','Romanian deadlift':'rack-platform',
   'Seated leg curl':'legcurl-s72','Hip adduction':'adductor','Hip abduction':'adductor','Leg extension':'legext-s71','Calf press':'legpress-s70',
-  'Smith squat':'smith-fw161','Dumbbell RDL':'dumbbells','Static lunge':'dumbbells','Alternating DB curl':'dumbbells','Neutral-grip DB bench press':'bench-fw163','DB French press':'bench-fw163','DB pullover':'bench-fw163','Lying alternating DB extension':'bench-fw163','Cable kickback':'ms50',
+  'Smith squat':'smith-fw161','Back extension Y':'backext-45','Cable kickback':'ms50',
   'T-bar row':'tbar-drax','Face pull':'ms50','Cable lateral raise':'ms50','Pallof press':'ms50','Cable pulldown':'ms50','Seated cable row':'ms50','Cable fly':'ms50','Cable pushdown':'ms50',
   'Multi Fly lateral raise':'multifly','Multi Fly rear raise':'multifly','Reverse pec deck':'pecfly','Pec deck fly':'pecfly','Lat pulldown':'lat-s33',
-  'Chest-supported row':'row-s34','Chest press':'chest-s13','Triceps extension':'triceps-s42','Biceps curl machine':'biceps-s40',
-  'Dumbbell bench press':'bench-fw163','Chest-supported lateral raise':'bench-fw163'};
+  'Chest-supported row':'row-s34','Chest press':'chest-s13','Triceps extension':'triceps-s42','Biceps curl machine':'biceps-s40',};
 const photoSrc = en => PHOTO[en] ? `img/${PHOTO[en]}.jpg` : null;
 const thumb = en => photoSrc(en) ? `<button class="thumb" data-act="zoom" data-src="${photoSrc(en)}" aria-label="Фото тренажера"><img src="${photoSrc(en)}" alt="" loading="lazy"></button>` : '';
 function techHtml(en){
