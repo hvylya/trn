@@ -399,3 +399,8 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 .newach .bd::after{content:''; position:absolute; inset:-4px; border-radius:50%; pointer-events:none; background:radial-gradient(circle, rgba(255,255,255,.55), transparent 65%); animation:badgeglow 1.4s ease-out .5s both}
 @keyframes badgeglow{0%{opacity:0; transform:scale(.6)}40%{opacity:1}100%{opacity:0; transform:scale(1.5)}}
 @media (prefers-reduced-motion: reduce){ .badge.pop, .newach .bd::after{animation:none} }
+
+/* помилки у формі замірів */
+.field.err input{outline:2px solid var(--warn); border-radius:10px}
+.field.err{animation:shake .35s}
+.ferr{display:block; margin-top:4px; color:var(--warn); font-size:13px}

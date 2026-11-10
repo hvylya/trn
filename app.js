@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.15.0';
+const APP_VERSION = '1.15.1';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -728,9 +728,10 @@ function markDone(i){
   if (person === 'p3' && st.type === 'weight' && st.max && s.r >= st.max && !A.prs.some(p => p.en === st.en)){
     A.qk = A.qk || {}; if (!A.qk[st.en]){ A.qk[st.en] = 1; quick = true; say(`${fmt(s.r)} — і легко? Перевір: униз було 2 с?`, 'fun', 'Якщо так — наступного разу додавай вагу. Якщо ні — спершу повільніше.', 'inspector'); }
   }
-  if (!allDone){ A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; }
+  const restOn = S.settings.restOn !== false;
+  if (!allDone){ A.restEnd = restOn ? Date.now() + restFor(st) * 1000 : null; A.restBeeped = false; }
   else if (st.kind === 'warm'){ A.restEnd = null; }
-  else { A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; A.tb = A.tb || {n: 0, pr: 0, at: -9, first: false, ex: 0}; A.tb.ex++;
+  else { A.restEnd = restOn ? Date.now() + restFor(st) * 1000 : null; A.restBeeped = false; A.tb = A.tb || {n: 0, pr: 0, at: -9, first: false, ex: 0}; A.tb.ex++;
     if (!quick && !A.prs.some(p => p.en === st.en)){ const [ph, tt, pr] = funPhrase(st, it); if (funAllowed(pr, false)){ funShown(false); say(ph, 'fun', '', tt); } } }
   save(); render();
 }
@@ -1095,6 +1096,9 @@ function mInsightCard(){
 
 /* ---------- заміри ---------- */
 const MF = [['weight','Вага','кг'],['chest','Груди','см'],['biceps','Біцепс','см'],['waist','Талія','см'],['hips','Стегна (обхват)','см'],['thigh','Стегно','см']];
+/* правдоподібні межі: усе поза ними — найпевніше, друкарська помилка */
+const MRANGE = {weight: [30, 250], chest: [50, 200], biceps: [15, 70], waist: [40, 200], hips: [50, 200], thigh: [25, 110]};
+const M_MIN_DATE = '2020-01-01';
 function measureScreen(){
   const M = [...S.measurements].sort((a, b) => a.date.localeCompare(b.date));
   const last = M[M.length - 1], prev = M[M.length - 2];
@@ -1116,7 +1120,7 @@ function addMeasureSheet(editDate){
   const M = [...S.measurements].sort((a, b) => a.date.localeCompare(b.date)); const last = M[M.length - 1] || {};
   const cur = editDate ? S.measurements.find(x => x.date === editDate) : null;
   openSheet(`<h2>${cur ? 'Змінити заміри' : 'Нові заміри'}</h2><p>Порожні поля можна пропустити.</p>
-    <div class="field" style="margin-bottom:10px"><label for="mdate">Дата</label><input type="date" id="mdate" value="${cur ? cur.date : iso(new Date())}"></div>
+    <div class="field" style="margin-bottom:10px"><label for="mdate">Дата</label><input type="date" id="mdate" min="${M_MIN_DATE}" max="${iso(new Date())}" value="${cur ? cur.date : iso(new Date())}"><small class="ferr" id="mdate_err" hidden></small></div>
     <div class="mgrid">${MF.map(([k, l, u]) => `<div class="field"><label for="m_${k}">${l}, ${u}</label><input id="m_${k}" inputmode="decimal" value="${cur && cur[k] != null ? fmt(cur[k]) : ''}" placeholder="${!cur && last[k] != null ? fmt(last[k]) : ''}"></div>`).join('')}</div>
     <button class="big" style="margin-top:14px" data-act="savem" data-orig="${cur ? cur.date : ''}">Зберегти</button>
     ${cur ? `<button class="danger" data-act="delm" data-date="${cur.date}">${ic('trash')} Видалити запис</button>` : ''}`);
@@ -1132,7 +1136,10 @@ function settingsSheet(){
     <div class="seg" role="group" aria-label="Фрази">${[['often','Часто'],['normal','Помірно'],['pr','Лише рекорди']].map(([k, l]) => `<button data-fun="${k}" aria-pressed="${(s.fun || 'normal') === k}">${l}</button>`).join('')}</div>
     <p style="margin-top:14px">Тема</p>
     <div class="themes">${THEMES.map(([k, l, bg, ac]) => `<button data-theme="${k}" aria-pressed="${curTheme() === k}" style="background:${bg};color:${ac}"><i><b style="background:${ac}"></b><b style="background:${bg};outline:1px solid ${ac}"></b></i>${l}</button>`).join('')}</div>
-    <p style="margin-top:14px">Відпочинок між підходами</p>
+    <p style="margin-top:14px">Таймер відпочинку</p>
+    <div class="seg" role="group" aria-label="Таймер відпочинку">${[[true,'Увімкнено'],[false,'Вимкнено']].map(([v, l]) => `<button data-reston="${v ? 1 : 0}" aria-pressed="${(s.restOn !== false) === v}">${l}</button>`).join('')}</div>
+    <p class="small muted" style="margin-top:6px">${s.restOn === false ? 'Відпочинок рахуєш сама, наприклад годинником. Таймер для планок працює як завжди.' : 'Після кожного підходу внизу зʼявиться відлік.'}</p>
+    <p style="margin-top:14px">Відпочинок між підходами${s.restOn === false ? ' <span class="small muted">(для оцінки часу тренування)</span>' : ''}</p>
     <div class="opts">
       ${[['restHeavy','Важкі базові (5–8 повторів)',[120,150,180]],['restMain','Інші базові (8–12)',[90,120,150]],['restIso','Ізоляція',[60,90,120]],['restCore','Кор',[30,45,60]]].map(([k, l, vals]) => `<div style="padding:4px 0"><div class="small muted" style="margin-bottom:4px">${l}</div><span class="seg">${vals.map(v => `<button data-rest="${k}:${v}" aria-pressed="${s[k] === v}">${v >= 60 ? (v / 60).toString().replace('.', ',') + ' хв' : v + ' с'}</button>`).join('')}</span></div>`).join('')}
     </div>
@@ -1195,6 +1202,7 @@ document.addEventListener('click', e => {
   if (d.mood){ const w = S.workouts.find(x => x.id === lastFinished.id); if (w){ w.mood = d.mood; save(); app.querySelectorAll('[data-mood]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mood === d.mood)); } return; }
   if (d.feel && S.active){ const it = S.active.items[S.active.queue[S.active.idx]]; it.feel = it.feel === d.feel ? null : d.feel; save(); render(); return; }
   if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(badge(fresh[0], 'pop'), achById(fresh[0])[5] ? 'Секретна ачівка!' : 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 5500); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
+  if (d.reston != null){ S.settings.restOn = d.reston === '1'; if (!S.settings.restOn && S.active){ S.active.restEnd = null; } save(); settingsSheet(); if (S.active) render(); return; }
   if (d.fun){ S.settings.fun = d.fun; save(); settingsSheet(); return; }
   if (d.theme){ LS.set('trn:theme', d.theme); applyTheme(); settingsSheet(); return; }
   if (d.dur){ S.settings.duration = +d.dur; S.settings.durTouched = true; save(); settingsSheet(); render(); return; }
@@ -1241,10 +1249,21 @@ document.addEventListener('click', e => {
     case 'dodelw': { const gone = S.workouts.find(w => w.id === d.id); S.workouts = S.workouts.filter(w => w.id !== d.id); undoBuf = {kind: 'w', item: gone, ach: Object.assign({}, S.ach)}; const lostW = recheckAch(); save(); closeSheet(); render(); toast(`Тренування видалено${lostW.length ? ` · ачівок знято: ${lostW.length}` : ''} <button class="undo" data-act="undo">Повернути</button>`, '', 7000); break; }
     case 'addm': addMeasureSheet(); break;
     case 'savem': {
-      const date = document.getElementById('mdate').value || iso(new Date()); const m = {date};
-      let any = false; MF.forEach(([k]) => { const v = num(document.getElementById('m_' + k).value); if (v != null){ m[k] = v; any = true; } });
+      const shake = el => { if (!el) return; const b = el.closest('.field') || el; b.classList.remove('err'); void b.offsetWidth; b.classList.add('err'); };
+      document.querySelectorAll('#sheet .field.err').forEach(x => x.classList.remove('err'));
+      const dEl = document.getElementById('mdate'), dErr = document.getElementById('mdate_err'), today = iso(new Date());
+      const date = dEl.value || today; dErr.hidden = true;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > today || date < M_MIN_DATE){ dErr.textContent = date > today ? 'Майбутнє Томек ще не бачив — обери сьогодні або минулу дату' : 'Перевір дату'; dErr.hidden = false; shake(dEl); break; }
+      const m = {date}; let any = false, bad = null;
+      MF.forEach(([k]) => { const el = document.getElementById('m_' + k), raw = el.value.trim(); if (!raw) return; const v = num(raw);
+        const [lo, hi] = MRANGE[k]; if (v == null || v < lo || v > hi){ bad = bad || el; shake(el); return; } m[k] = Math.round(v * 100) / 100; any = true; });
+      if (bad){ bad.focus(); toast('Схоже на друкарську помилку — перевір підсвічене поле'); break; }
       if (!any){ toast('Заповни хоча б одне поле'); break; }
-      S.measurements = S.measurements.filter(x => x.date !== date && x.date !== d.orig); S.measurements.push(m);
+      /* на цю дату вже є заміри (і це не той самий запис) — доповнюємо, а не затираємо */
+      const other = S.measurements.find(x => x.date === date && x.date !== d.orig);
+      const merged = other ? Object.assign({}, other, m) : m;
+      S.measurements = S.measurements.filter(x => x.date !== date && x.date !== d.orig); S.measurements.push(merged);
+      if (other) setTimeout(() => toast(`Додано до замірів за ${date.slice(8)}.${date.slice(5, 7)}`), 2700);
       const fresh = checkAch(); save(); closeSheet(); render();
       window.scrollTo(0, 0); if (fresh.length) sayIco(badge(fresh[0], 'pop'), achById(fresh[0])[5] ? 'Секретна ачівка!' : 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 5500); else toast('Заміри збережено ✓'); break; }
     case 'editm': addMeasureSheet(d.date); break;
