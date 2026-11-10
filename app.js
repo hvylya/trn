@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.12.0';
+const APP_VERSION = '1.13.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -211,11 +211,12 @@ function streakInfo(){
 }
 const streakWeeks = () => streakInfo().n;
 function blockWeek(){ if (!S.blockStart) return 1; return Math.floor((weekStart(Date.now()) - weekStart(S.blockStart)) / (7 * 864e5)) + 1; }
-const blockLen = () => S.blockLen || 8;
+const P3_END = new Date('2026-12-15T00:00').getTime();
+const blockLen = () => person === 'p3' && !S.blockStart ? Math.max(1, Math.floor((P3_END - weekStart(Date.now())) / 6048e5)) : (S.blockLen || 8);
 const isEvening = w => new Date(w.end).getHours() >= 16;
 const shakes = () => S.workouts.filter(isEvening).length;
 const inDeload = () => S.deloadUntil && Date.now() < S.deloadUntil;
-const COMPOUND = new Set(['V-squat','Leg press 45°','Romanian deadlift','Hip thrust','T-bar row','Lat pulldown','Chest-supported row','Chest press','Seated cable row','Cable pulldown','Dumbbell bench press']);
+const COMPOUND = new Set(['V-squat','Leg press 45°','Romanian deadlift','Hip thrust','T-bar row','Lat pulldown','Chest-supported row','Chest press','Seated cable row','Cable pulldown','Dumbbell bench press','Back squat','Dumbbell RDL','Neutral-grip DB bench press','Static lunge']);
 /* сигнал розвантаження: 2 тижні без прогресу в більшості базових вправ, або два важкі тренування поспіль */
 function deloadSignal(){
   if (inDeload() || (S.deloadSnooze && Date.now() < S.deloadSnooze) || S.workouts.length < 6) return null;
@@ -384,7 +385,7 @@ function todayScreen(){
 function bannersHtml(bw){
   let h = '';
   const key = String(S.blockStart);
-  if (S.blockStart && bw > blockLen()) h += `<div class="banner ok">${tom('proud','tomban')}<span class="grow"><b>Блок завершено!</b> Подивись підсумок і отримай сертифікат.</span><button class="btn" data-act="blockend">Підсумок</button></div>`;
+  if (S.blockStart && bw > blockLen()) h += `<div class="banner ok">${tom('proud','tomban')}<span class="grow"><b>${person === 'p3' ? 'Комплекс завершено!' : 'Блок завершено!'}</b> ${person === 'p3' ? 'Нова програма вже на підході. А поки — підсумок і сертифікат.' : 'Подивись підсумок і отримай сертифікат.'}</span><button class="btn" data-act="blockend">Підсумок</button></div>`;
   else if (S.blockStart && bw === 3 && !S.cpSeen[key + ':3']) h += `<div class="banner">${tom('inspector','tomban')}<span class="grow"><b>Контрольна точка, 3-й тиждень.</b> Якщо якась вправа не заходить — болить, незручно або тренажер вічно зайнятий — запиши в нотатку після тренування, замінимо.</span><button class="btn" data-act="cpok" data-k="${key}:3">Ок</button></div>`;
   const ds = deloadSignal();
   if (ds) h += `<div class="banner">${tom(ds === 'stuck' ? 'shy' : 'back','tomban')}<span class="grow"><b>${ds === 'stuck' ? 'Прогрес стоїть 2 тижні.' : 'Два важкі тренування поспіль.'}</b> Схоже, час на легкий тиждень: ті самі вправи, вага −25%.</span></div>
@@ -564,7 +565,9 @@ function tick(){
       rest.hidden = false;
       rest.className = 'rest' + (rl <= 0 ? ' over' : '');
       /* кнопки створюємо один раз, щосекунди міняємо лише текст — інакше на iPhone натискання «губляться» */
-      if (!rest.firstElementChild){ rest.innerHTML = `<div><span id="restlbl"></span><button data-act="rest30">+30 с</button><button data-act="restx" aria-label="Закрити відпочинок">${ic('x')}</button></div>`; }
+      if (!rest.firstElementChild){ rest.innerHTML = `<p class="resttip" id="resttip" hidden></p><div><span id="restlbl"></span><button data-act="rest30">+30 с</button><button data-act="restx" aria-label="Закрити відпочинок">${ic('x')}</button></div>`; }
+      const tipEl = document.getElementById('resttip');
+      if (tipEl){ const tp = rl > 0 ? (A.restTip || '') : ''; if (tipEl.dataset.t !== tp){ tipEl.textContent = tp; tipEl.dataset.t = tp; tipEl.hidden = !tp; } }
       const lbl = document.getElementById('restlbl');
       const txt = rl > 0 ? `${ic('timer')} Відпочинок <b>${mmss(rl)}</b>` : `${ic('check')} <b>Можна наступний підхід</b>`;
       if (lbl.dataset.t !== txt){ lbl.innerHTML = txt; lbl.dataset.t = txt; }
@@ -627,6 +630,12 @@ function restFor(st){
   if (COMPOUND.has(st.en)) return st.min && st.min <= 8 ? S.settings.restHeavy : S.settings.restMain;
   return S.settings.restIso;
 }
+/* Lin4ik: мʼяко про темп і техніку */
+const TEMPO = ['Наступний — раз-Томек, два-Томек униз.','Повільно вниз — це не слабкість, це половина роботи.','Відчуй, який мʼяз працює, — і тільки тоді рахуй повтор.','Томек не поспішає. І тобі не треба.'];
+function restTipFor(st){
+  if (person !== 'p3' || st.kind === 'warm') return null;
+  const t = lib(st.en).tech; return Math.random() < .35 || !t || !t.focus ? pick(TEMPO) : `Фокус: ${t.focus}`;
+}
 const FUN = {
   up: ['Сильніше, ніж минулого разу 💪','Прогрес видно неозброєним оком 👀','Минула ти була б вражена 😎','Мʼязи записали це в щоденник 📈','Оце так! Плюс до минулого разу 🚀','Минула ти аплодує стоячи 👏','Мʼязи кажуть «дякую» 💌'],
   same: ['Стабільно, як швейцарський годинник ⌚','Стабільність — теж сила 🧱','Тримаєш планку. Буквально 😄','Рівно як минулого разу — база тримається 🧘','Тримаєш рівень — це теж робота 💼'],
@@ -687,10 +696,16 @@ function markDone(i){
     }
   }
   const allDone = it.sets.every(x => x.done);
+  A.restTip = restTipFor(st);
+  /* Lin4ik: верх діапазону — спершу перевірити темп, а вже потім додавати вагу */
+  let quick = false;
+  if (person === 'p3' && st.type === 'weight' && st.max && s.r >= st.max && !A.prs.some(p => p.en === st.en)){
+    A.qk = A.qk || {}; if (!A.qk[st.en]){ A.qk[st.en] = 1; quick = true; say(`${fmt(s.r)} — і легко? Перевір: униз було 2 с?`, 'fun', 'Якщо так — наступного разу додавай вагу. Якщо ні — спершу повільніше.', 'inspector'); }
+  }
   if (!allDone){ A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; }
   else if (st.kind === 'warm'){ A.restEnd = null; }
   else { A.restEnd = Date.now() + restFor(st) * 1000; A.restBeeped = false; A.tb = A.tb || {n: 0, pr: 0, at: -9, first: false, ex: 0}; A.tb.ex++;
-    if (!A.prs.some(p => p.en === st.en)){ const [ph, tt, pr] = funPhrase(st, it); if (funAllowed(pr, false)){ funShown(false); say(ph, 'fun', '', tt); } } }
+    if (!quick && !A.prs.some(p => p.en === st.en)){ const [ph, tt, pr] = funPhrase(st, it); if (funAllowed(pr, false)){ funShown(false); say(ph, 'fun', '', tt); } } }
   save(); render();
 }
 
@@ -728,7 +743,7 @@ function finishWorkout(){
   let ups = 0, firsts = 0;
   items.forEach(it => { if (it.kind === 'warm') return; const l = lastFor(it.en); if (!l){ firsts++; return; } if (it.type !== 'weight') return; if (l.it.sets[0] && it.sets[0] && it.sets[0].w > l.it.sets[0].w) ups++; });
   const rec = { id: 'w' + A.start, day: A.day, start: A.start, end: Date.now(), items, prs: A.prs, ups, tonnage: tonnageOf(items), sets: items.filter(it => it.kind !== 'warm').reduce((a, it) => a + it.sets.length, 0), mood: null, note: '', deload: !!inDeload() };
-  if (!S.blockStart) S.blockStart = A.start;
+  if (!S.blockStart){ S.blockStart = A.start; if (person === 'p3') S.blockLen = Math.max(1, Math.floor((P3_END - weekStart(A.start)) / 6048e5)); }
   S.workouts.push(rec); S.active = null;
   const fresh = checkAch();
   save(); closeSheet(); releaseWake();
@@ -873,7 +888,7 @@ const HOME = {
        {id:'calf', icon:'stairs', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'}],
   p2: [{id:'calf', icon:'stairs', title:'Ікри', desc:'Підйоми на носки на сходинці, тримаючись за стіну, 3 × 15–20, внизу пауза 1 с', per:3, freq:'2–3 рази на тиждень'},
        {id:'balance', icon:'oneleg', title:'Баланс', desc:'Поки чистиш зуби, стій на одній нозі: по 30 с на кожну, двічі. Коліно мʼяке, погляд прямо, раковина поруч. Хитаєшся — так і має бути, саме це й тренує гомілкостоп.', per:5, freq:'5 днів на тиждень'}],
-  p3: [{id:'core', icon:'bug', title:'Кор на 7 хвилин', tech:['Dead bug','Bird dog'], desc:'Місця — як для килимка.\n1. Мертвий жук: 3 × 8 на кожну сторону. Поперек притиснутий до підлоги, видих — коли опускаєш.\n2. Птах-пес: 3 × 6 на кожну сторону, затримка 2 с. Корпус нерухомий, таз не повертається.\nВідпочинок між підходами 30 с. Обидві вправи потім увійдуть у твою програму.', per:3, freq:'3 рази на тиждень'}]
+  p3: [{id:'core', icon:'bug', title:'Кор на 7 хвилин', tech:['Dead bug','Bird dog'], desc:'Місця — як для килимка.\n1. Мертвий жук: 3 × 8 на кожну сторону. Поперек притиснутий до підлоги, видих — коли опускаєш.\n2. Птах-пес: 3 × 6 на кожну сторону, затримка 2 с. Корпус нерухомий, таз не повертається.\nВідпочинок між підходами 30 с.', per:3, freq:'3 рази на тиждень'}]
 };
 const homeDone = (d, id) => (S.home[d] || []).includes(id);
 function homeCount(id){ return Object.values(S.home).filter(a => a.includes(id)).length; }

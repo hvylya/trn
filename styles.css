@@ -379,3 +379,8 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 .letter b{display:block; font-size:17px; margin-top:2px}
 .letter p{margin-top:4px; font-size:14px; color:var(--muted)}
 .letter p b{display:inline; font-size:14px; color:var(--ink)}
+
+/* порада під час відпочинку (Lin4ik) */
+.rest .resttip{margin:0 auto 8px; max-width:528px; padding:8px 14px; border-radius:12px; background:var(--surface2); border:1px solid var(--line); color:var(--ink); font-size:14px; line-height:1.35; text-align:center; box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.rest{flex-direction:column; align-items:center}
+.rest .resttip{width:calc(100% - 32px)}
