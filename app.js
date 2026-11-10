@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.14.0';
+const APP_VERSION = '1.15.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -287,6 +287,7 @@ function tonnageOf(items){
 
 /* ---------- досягнення ---------- */
 const TOMEK_KG = 4;
+const badge = (id, cls) => { const B = window.BADGE || {}; return (B[id] || B._secret || '').replace('<svg class="badge"', `<svg class="badge ${cls || ''}"`); };
 const homeDays = () => Object.values(S.home || {}).filter(a => a && a.length).length;
 const ACH = [
   /* [id, іконка, назва, умова, людина (не використовується), секретна] */
@@ -791,7 +792,7 @@ function finishScreen(){
     <p class="muted small" style="text-align:center;margin:-6px 0 12px">Піднято загалом: ${fmtInt(w.tonnage)} кг — це ${tomeks(w.tonnage)}${f.evening ? ` · шейк №${shakes()}` : ''}</p>
     ${f.ups || f.firsts ? `<div class="today">${f.ups ? `<span>${ic('chart')} Додала вагу: <b>${f.ups}</b> ${f.ups === 1 ? 'вправа' : f.ups < 5 ? 'вправи' : 'вправ'}</span>` : ''}${f.firsts ? `<span>${ic('pencil')} Нові точки відліку: <b>${f.firsts}</b></span>` : ''}</div>` : ''}
     ${w.prs.map(p => `<div class="newach"><span>${ic('trophy')}</span><div><b>${esc(nm(p.en))}</b><br><small class="muted">${fmt(p.w)} кг × ${fmt(p.r)}</small></div></div>`).join('')}
-    ${f.fresh.map(id => { const a = achById(id); return `<div class="newach"><span>${ic(a[1])}</span><div><b>${a[5] ? 'Секретна ачівка!' : 'Нова ачівка!'}</b><br>${esc(a[2])}</div></div>`; }).join('')}
+    ${f.fresh.map(id => { const a = achById(id); return `<div class="newach"><span class="bd">${badge(a[0], 'pop')}</span><div><b>${a[5] ? 'Секретна ачівка!' : 'Нова ачівка!'}</b><br>${esc(a[2])}</div></div>`; }).join('')}
     <div class="card"><h3>Як пройшло?</h3>
       <div class="moods">${MOODS.map(([m, i, l]) => `<button data-mood="${m}" aria-pressed="${w.mood === m}" aria-label="${l}">${ic(i)}<small>${l}</small></button>`).join('')}</div>
       <textarea id="wnote" placeholder="Нотатка: як почувалась, що відзначити…">${esc(w.note)}</textarea>
@@ -893,7 +894,7 @@ function progressScreen(){
     <div class="card"><h3>Блок: ${bw <= blockLen() ? `тиждень ${bw} з ${blockLen()}` : 'завершено'}</h3><div class="bar"><i style="width:${Math.min(100, Math.round(Math.min(bw, blockLen()) / blockLen() * 100))}%"></i></div>
       ${calMonth(now.getFullYear(), now.getMonth(), days)}${calMonth(pm.getFullYear(), pm.getMonth(), days)}</div>
     <div class="card"><h3>Ачівки · ${unlocked} з ${achList().length}</h3><div class="achs">${achList().map(([id, e, t,,, sec]) => { const [n1, n2] = t.split(' · '); const got = S.ach[id];
-      return `<div class="ach ${got ? '' : 'lock'}"><span>${ic(got ? e : sec ? 'qmark' : 'lock')}</span>${got || !sec ? `${esc(n1)}${n2 ? `<small>${esc(n2)}</small>` : ''}` : '???<small>секретна</small>'}</div>`; }).join('')}</div></div>
+      return `<div class="ach ${got ? '' : 'lock'}"><span class="bd">${got ? badge(id) : sec ? badge('_secret') : badge(id, 'off')}</span>${got || !sec ? `${esc(n1)}${n2 ? `<small>${esc(n2)}</small>` : ''}` : '???<small>секретна</small>'}</div>`; }).join('')}</div></div>
     <div class="card"><h3>Вага по вправі</h3>${exs.length ? `<select data-act="chartex" aria-label="Вправа">${exs.map(e => `<option value="${esc(e)}" ${e === chartEx ? 'selected' : ''}>${esc(nm(e))}</option>`).join('')}</select>${lineChart(pts, 'найбільша вага за тренування, кг')}` : '<p class="muted small">Графік зʼявиться після першого тренування.</p>'}</div>
     ${tabbar()}`;
 }
@@ -1193,7 +1194,7 @@ document.addEventListener('click', e => {
   if (d.hist){ histSheet(d.hist); return; }
   if (d.mood){ const w = S.workouts.find(x => x.id === lastFinished.id); if (w){ w.mood = d.mood; save(); app.querySelectorAll('[data-mood]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mood === d.mood)); } return; }
   if (d.feel && S.active){ const it = S.active.items[S.active.queue[S.active.idx]]; it.feel = it.feel === d.feel ? null : d.feel; save(); render(); return; }
-  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 5500); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
+  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(badge(fresh[0], 'pop'), achById(fresh[0])[5] ? 'Секретна ачівка!' : 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 5500); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
   if (d.fun){ S.settings.fun = d.fun; save(); settingsSheet(); return; }
   if (d.theme){ LS.set('trn:theme', d.theme); applyTheme(); settingsSheet(); return; }
   if (d.dur){ S.settings.duration = +d.dur; S.settings.durTouched = true; save(); settingsSheet(); render(); return; }
@@ -1245,7 +1246,7 @@ document.addEventListener('click', e => {
       if (!any){ toast('Заповни хоча б одне поле'); break; }
       S.measurements = S.measurements.filter(x => x.date !== date && x.date !== d.orig); S.measurements.push(m);
       const fresh = checkAch(); save(); closeSheet(); render();
-      window.scrollTo(0, 0); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 5500); else toast('Заміри збережено ✓'); break; }
+      window.scrollTo(0, 0); if (fresh.length) sayIco(badge(fresh[0], 'pop'), achById(fresh[0])[5] ? 'Секретна ачівка!' : 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 5500); else toast('Заміри збережено ✓'); break; }
     case 'editm': addMeasureSheet(d.date); break;
     case 'delm': { if (!t.classList.contains('armed')){ t.classList.add('armed'); t.innerHTML = `${ic('trash')} Точно видалити? Натисни ще раз`; break; }
       const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone, ach: Object.assign({}, S.ach)}; recheckAch(); save(); closeSheet(); render();

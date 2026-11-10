@@ -385,3 +385,17 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 .rest{flex-direction:column; align-items:center}
 .rest .resttip{width:calc(100% - 32px)}
 .ach small{display:block; font-size:11px; color:var(--muted); font-weight:500; margin-top:2px; line-height:1.25}
+
+/* кольорові бейджі ачівок */
+.badge{display:block; width:64px; height:64px; margin:0 auto 6px; overflow:visible}
+.ach .bd .badge{width:62px; height:62px}
+.ach.lock{opacity:1}
+.badge.off{filter:grayscale(1) brightness(.85); opacity:.42}
+.newach .bd .badge{width:56px; height:56px; margin:0}
+.tcard .tico .badge{width:56px; height:56px; margin:-6px 0}
+.badge.pop{animation:badgepop .9s cubic-bezier(.2,1.4,.4,1) both; transform-origin:50% 50%}
+@keyframes badgepop{0%{transform:perspective(200px) rotateY(90deg) scale(.4); opacity:0}55%{transform:perspective(200px) rotateY(-12deg) scale(1.12); opacity:1}100%{transform:none}}
+.newach .bd{position:relative}
+.newach .bd::after{content:''; position:absolute; inset:-4px; border-radius:50%; pointer-events:none; background:radial-gradient(circle, rgba(255,255,255,.55), transparent 65%); animation:badgeglow 1.4s ease-out .5s both}
+@keyframes badgeglow{0%{opacity:0; transform:scale(.6)}40%{opacity:1}100%{opacity:0; transform:scale(1.5)}}
+@media (prefers-reduced-motion: reduce){ .badge.pop, .newach .bd::after{animation:none} }
