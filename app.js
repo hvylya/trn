@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.13.1';
+const APP_VERSION = '1.13.2';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -432,6 +432,7 @@ function fillSets(id){
 /* фото тренажерів (офлайн, з кешу застосунку) */
 const PHOTO = {'V-squat':'vsquat-drax','Leg press 45°':'legpress-hack','Calf press 45°':'legpress-hack','Hip thrust':'hipthrust-drax','Romanian deadlift':'rack-platform',
   'Seated leg curl':'legcurl-s72','Hip adduction':'adductor','Hip abduction':'adductor','Leg extension':'legext-s71','Calf press':'legpress-s70',
+  'Smith squat':'smith-fw161','Dumbbell RDL':'dumbbells','Static lunge':'dumbbells','Alternating DB curl':'dumbbells','Neutral-grip DB bench press':'bench-fw163','DB French press':'bench-fw163','DB pullover':'bench-fw163','Lying alternating DB extension':'bench-fw163','Cable kickback':'ms50',
   'T-bar row':'tbar-drax','Face pull':'ms50','Cable lateral raise':'ms50','Pallof press':'ms50','Cable pulldown':'ms50','Seated cable row':'ms50','Cable fly':'ms50','Cable pushdown':'ms50',
   'Multi Fly lateral raise':'multifly','Multi Fly rear raise':'multifly','Reverse pec deck':'pecfly','Pec deck fly':'pecfly','Lat pulldown':'lat-s33',
   'Chest-supported row':'row-s34','Chest press':'chest-s13','Triceps extension':'triceps-s42','Biceps curl machine':'biceps-s40',
@@ -1167,7 +1168,7 @@ document.addEventListener('click', e => {
   if (d.hist){ histSheet(d.hist); return; }
   if (d.mood){ const w = S.workouts.find(x => x.id === lastFinished.id); if (w){ w.mood = d.mood; save(); app.querySelectorAll('[data-mood]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mood === d.mood)); } return; }
   if (d.feel && S.active){ const it = S.active.items[S.active.queue[S.active.idx]]; it.feel = it.feel === d.feel ? null : d.feel; save(); render(); return; }
-  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 7000); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
+  if (d.home){ const k = iso(new Date()); const a = S.home[k] || []; S.home[k] = a.includes(d.home) ? a.filter(x => x !== d.home) : a.concat(d.home); const fresh = checkAch(); save(); render(); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 5500); else if (S.home[k].includes(d.home)) toast('Зараховано ✓'); return; }
   if (d.fun){ S.settings.fun = d.fun; save(); settingsSheet(); return; }
   if (d.theme){ LS.set('trn:theme', d.theme); applyTheme(); settingsSheet(); return; }
   if (d.dur){ S.settings.duration = +d.dur; S.settings.durTouched = true; save(); settingsSheet(); render(); return; }
@@ -1219,7 +1220,7 @@ document.addEventListener('click', e => {
       if (!any){ toast('Заповни хоча б одне поле'); break; }
       S.measurements = S.measurements.filter(x => x.date !== date && x.date !== d.orig); S.measurements.push(m);
       const fresh = checkAch(); save(); closeSheet(); render();
-      window.scrollTo(0, 0); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 7000); else toast('Заміри збережено ✓'); break; }
+      window.scrollTo(0, 0); if (fresh.length) sayIco(tom('yay'), 'Нова ачівка!', esc(achById(fresh[0])[2]), 'fun', 5500); else toast('Заміри збережено ✓'); break; }
     case 'editm': addMeasureSheet(d.date); break;
     case 'delm': { if (!t.classList.contains('armed')){ t.classList.add('armed'); t.innerHTML = `${ic('trash')} Точно видалити? Натисни ще раз`; break; }
       const gone = S.measurements.find(x => x.date === d.date); S.measurements = S.measurements.filter(x => x.date !== d.date); undoBuf = {kind: 'm', item: gone, ach: Object.assign({}, S.ach)}; recheckAch(); save(); closeSheet(); render();
