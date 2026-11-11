@@ -5,12 +5,12 @@
   --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
   color-scheme:dark;
 }
-html[data-theme="forest"]{--bg:#f4f0d9; --surface:#fdf6e3; --surface2:#efebd4; --line:#e0dcc7; --ink:#4f5b62; --muted:#6f7d73; --accent:#35a77c; --accent-ink:#ffffff; --accent-soft:#b7dcc9; --ok:#8da101; --warn:#dfa000; --body:#e6e2cc; --m0:#d6d2bc; color-scheme:light}
+html[data-theme="paper"]{--bg:#f6f5f1; --surface:#fdfcf9; --surface2:#f1efea; --line:#e4e2dc; --ink:#2a2a2a; --muted:#77756f; --accent:#3f6fc4; --accent-ink:#ffffff; --accent-soft:#e9eff9; --accent-dk:#335ca3; --ok:#3e9a6b; --warn:#b8861b; --ochre:#e0a92e; --coral:#e07a5f; --rule:#b9b6ae; --tom-acc:#2a2a2a; --body:#efede8; --m0:#e4e2dc; color-scheme:light}
 html[data-theme="kanagawa"]{--bg:#16161d; --surface:#1f1f28; --surface2:#2a2a37; --line:#363646; --ink:#dcd7ba; --muted:#a6a69c; --accent:#d27e99; --accent-ink:#16161d; --accent-soft:#6a3f4d; --ok:#98bb6c; --warn:#e6c384; --body:#2a2a37; --m0:#363646}
 html[data-theme="dawn"]{--bg:#faf4ed; --surface:#fffaf3; --surface2:#f2e9e1; --line:#dfdad9; --ink:#575279; --muted:#797593; --accent:#d7827e; --accent-ink:#ffffff; --accent-soft:#efc5c2; --ok:#286983; --warn:#ea9d34; --body:#f2e9e1; --m0:#dfdad9; color-scheme:light}
 html[data-theme="nord"]{--bg:#2e3440; --surface:#3b4252; --surface2:#434c5e; --line:#4c566a; --ink:#eceff4; --muted:#b2bccc; --accent:#88c0d0; --accent-ink:#2e3440; --accent-soft:#4f6f7f; --ok:#a3be8c; --warn:#ebcb8b; --body:#434c5e; --m0:#4c566a}
 html[data-theme="gruvbox"]{--bg:#1d2021; --surface:#282828; --surface2:#3c3836; --line:#504945; --ink:#ebdbb2; --muted:#a89984; --accent:#fe8019; --accent-ink:#1d2021; --accent-soft:#7c4a22; --ok:#b8bb26; --warn:#fabd2f; --body:#3c3836; --m0:#504945}
-html[data-theme="tokyo"]{--bg:#16161e; --surface:#1a1b26; --surface2:#292e42; --line:#3b4261; --ink:#c0caf5; --muted:#a9b1d6; --accent:#7aa2f7; --accent-ink:#16161e; --accent-soft:#34446e; --ok:#9ece6a; --warn:#e0af68; --body:#292e42; --m0:#3b4261}
+html[data-theme="mint"]{--bg:#e9f5f0; --surface:#f8fcfa; --surface2:#dcefe6; --line:#c9e4d8; --ink:#24443a; --muted:#5d7d72; --accent:#ef5f6a; --accent-ink:#ffffff; --accent-soft:#fde0e2; --ok:#2a9d8f; --warn:#c47d14; --body:#dcefe6; --m0:#c9e4d8; color-scheme:light}
 
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 html,body{margin:0; background:var(--bg); color:var(--ink)}
@@ -406,3 +406,27 @@ select{font:inherit; font-size:16px; color:var(--ink); background:var(--surface2
 .ferr{display:block; margin-top:4px; color:var(--warn); font-size:13px}
 .heavy{display:flex; gap:10px; align-items:center; margin-top:8px; padding:8px 12px; border-radius:12px; background:color-mix(in srgb,var(--accent) 10%, transparent); font-size:14px; line-height:1.35}
 .tomheavy{width:40px; flex:none; margin:-4px 0}
+
+/* ---------- Папір: матовий аркуш, колір лише в лініях ---------- */
+html[data-theme="paper"] .big, html[data-theme="paper"] .btn.acc, html[data-theme="paper"] .wnav button.acc, html[data-theme="paper"] .undo{background:var(--accent-soft); color:var(--accent-dk); border:1.5px solid var(--accent)}
+html[data-theme="paper"] .activebar{background:var(--surface); color:var(--ink); border:1.5px solid var(--accent); box-shadow:0 6px 20px rgba(40,35,25,.10)}
+html[data-theme="paper"] .card{border-color:var(--line)}
+html[data-theme="paper"] .seg button[aria-pressed="true"]{box-shadow:none; outline:1px solid var(--line)}
+html[data-theme="paper"] .progress{height:4px; background:var(--line)}
+html[data-theme="paper"] .progress i{background:var(--coral)}
+html[data-theme="paper"] .kindtag{display:inline-block; padding-bottom:2px; border-bottom:1.5px solid currentColor}
+html[data-theme="paper"] .kindtag.extra{color:var(--warn)}
+html[data-theme="paper"] .step{background:transparent; border-radius:0; border-bottom:1px solid var(--rule)}
+html[data-theme="paper"] .check{border-radius:50%; width:46px; border-width:1.5px}
+html[data-theme="paper"] .set.done{background:color-mix(in srgb,var(--ok) 5%, var(--surface)); border-color:color-mix(in srgb,var(--ok) 35%, transparent)}
+html[data-theme="paper"] .set.done .check{background:transparent; border-color:var(--ok); color:var(--ok)}
+html[data-theme="paper"] .up{background:none; border-radius:0; border-left:2px solid var(--ochre); color:#7a5b12; padding:4px 0 4px 10px}
+html[data-theme="paper"] .last{background:none; border-radius:0; border-left:2px solid var(--line); padding:4px 0 4px 10px}
+html[data-theme="paper"] .heavy{background:none; border-radius:0; border-left:2px solid var(--coral); padding:4px 0 4px 10px}
+html[data-theme="paper"] .tcard{background:var(--surface); box-shadow:0 6px 20px rgba(40,35,25,.10)}
+html[data-theme="paper"] .tcard.fun{background:var(--surface); color:var(--ink); border:1.5px solid var(--accent)}
+html[data-theme="paper"] .rest div, html[data-theme="paper"] .rest .resttip{box-shadow:0 6px 20px rgba(40,35,25,.10)}
+html[data-theme="paper"] .rest.over div, html[data-theme="paper"] .rest.hold div{background:var(--surface); color:var(--accent-dk); border:1.5px solid var(--accent)}
+html[data-theme="paper"] .cal span.h{background:var(--accent-soft); color:var(--accent-dk)}
+html[data-theme="paper"] .banner{background:var(--surface); border:1px solid var(--line); box-shadow:inset 3px 0 0 var(--ochre)}
+html[data-theme="paper"] .banner.ok{box-shadow:inset 3px 0 0 var(--ok)}

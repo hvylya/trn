@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.16.0';
+const APP_VERSION = '1.17.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -117,8 +117,8 @@ function migrateAch(){
 }
 function save(){ if (person) LS.set('trn:data:' + person, S); }
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
-const THEMES = [['nord','Nord','#2e3440','#88c0d0'],['dawn','Rosé Pine Dawn','#faf4ed','#d7827e'],['forest','Everforest Light','#fdf6e3','#35a77c'],['kanagawa','Kanagawa','#1f1f28','#d27e99'],['gruvbox','Gruvbox','#282828','#fe8019'],['tokyo','Tokyo Night','#1a1b26','#7aa2f7']];
-const curTheme = () => { const t = LS.get('trn:theme', 'nord'); return THEMES.some(x => x[0] === t) ? t : 'nord'; };
+const THEMES = [['nord','Nord','#2e3440','#88c0d0'],['kanagawa','Kanagawa','#1f1f28','#d27e99'],['gruvbox','Gruvbox','#282828','#fe8019'],['dawn','Rosé Pine Dawn','#faf4ed','#d7827e'],['mint','Мʼята','#f8fcfa','#ef5f6a'],['paper','Папір','#fdfcf9','#3f6fc4']];
+const curTheme = () => { const t0 = LS.get('trn:theme', 'nord'), t = ({forest:'paper', tokyo:'nord'})[t0] || t0; return THEMES.some(x => x[0] === t) ? t : 'nord'; };
 function applyTheme(){ const t = curTheme(); document.documentElement.dataset.theme = t; const th = THEMES.find(x => x[0] === t) || THEMES[0]; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = th[2]; try { tintToms(); } catch(e){} }
 applyTheme();
 
@@ -130,7 +130,7 @@ const tom = (n, cls) => `<img class="tom ${cls || ''}" data-t="${n}" src="${tomU
 function tomStops(){
   const cs = getComputedStyle(document.documentElement), hx = v => { v = v.trim(); return [1, 3, 5].map(i => parseInt(v.slice(i, i + 2), 16) / 255); };
   const lum = c => .2126 * c[0] + .7152 * c[1] + .0722 * c[2], mix = (a, b, t) => a.map((x, i) => x * (1 - t) + b[i] * t);
-  const a = hx(cs.getPropertyValue('--bg') || '#2e3440'), b = hx(cs.getPropertyValue('--ink') || '#eceff4'), acc = hx(cs.getPropertyValue('--accent') || '#88c0d0');
+  const a = hx(cs.getPropertyValue('--bg') || '#2e3440'), b = hx(cs.getPropertyValue('--ink') || '#eceff4'), acc = hx(cs.getPropertyValue('--tom-acc') || cs.getPropertyValue('--accent') || '#88c0d0');
   const dark = lum(a) < lum(b) ? a : b, light = lum(a) < lum(b) ? b : a;
   const paper = mix(light, [1, 1, .97], .25), ink = mix(dark, [0, 0, 0], .25);
   return [ink, mix(mix(ink, paper, .5), acc, .22), mix(mix(ink, paper, .78), acc, .12), paper];
@@ -403,7 +403,7 @@ function todayScreen(){
         <h2>${DAY_NAME[day]}</h2>
         <div class="seg" role="group" aria-label="День">${DAY_ORDER.map(k => `<button data-day="${k}" aria-pressed="${k === day}">${DAY_TAB[k]}</button>`).join('')}</div>
       </div>
-      <p class="muted small" style="margin-top:4px">${steps.length} вправ · ~${est} хв · ${S.settings.duration} хв у залі</p>
+      <p class="muted small" style="margin-top:4px">${steps.filter(s => s.kind === 'main' || s.kind === 'core').length} вправ · ~${est} хв · ${S.settings.duration} хв у залі</p>
       <ul class="preview">${names.map(n => `<li>${esc(nm(n))}</li>`).join('')}</ul>
       <button class="big" data-act="start" data-dayv="${day}">${S.active ? `${ic('play')} ПРОДОВЖИТИ${cont}` : `${ic('play')} ПОЧАТИ ТРЕНУВАННЯ`}</button>
       <div class="dots">${DAY_ORDER.map(k => `<span class="dot ${thisWeek.has(k) ? 'done' : ''}"><i></i>${DAY_TAB[k]}</span>`).join('')}<span class="dot" style="margin-left:auto">цей тиждень</span></div>
@@ -493,8 +493,10 @@ function workoutScreen(){
   if (A.idx >= A.queue.length) A.idx = A.queue.length - 1;
   const id = A.queue[A.idx]; const st = effStep(A.day, id); const it = ensureItem(id);
   const L = lib(st.en);
-  const mainIds = A.queue.filter(q => effStep(A.day, q).kind !== 'extra');
-  const doneCount = A.queue.filter(q => { const x = A.items[q]; return x && x.sets.length && x.sets.every(s => s.done); }).length;
+  /* лічильник і прогрес — лише основні вправи й кор, без розминки та «Якщо є час» */
+  const mainIds = A.queue.filter(q => ['main', 'core'].includes(effStep(A.day, q).kind));
+  const doneCount = mainIds.filter(q => { const x = A.items[q]; return x && x.sets.length && x.sets.every(s => s.done); }).length;
+  const posLbl = st.kind === 'warm' ? 'Розминка' : st.kind === 'extra' ? 'Додатково' : `${mainIds.indexOf(id) + 1}/${mainIds.length}`;
   const pct = Math.round(doneCount / Math.max(1, mainIds.length) * 100);
   const last = lastFor(st.en, st);
   const up = suggestUp(st, st.en);
@@ -515,7 +517,7 @@ function workoutScreen(){
   const isLast = A.idx === A.queue.length - 1;
   const nextIsExtra = !isLast && effStep(A.day, A.queue[A.idx + 1]).kind === 'extra' && st.kind !== 'extra';
   return `<div class="wtop"><button class="iconbtn wide" data-act="minimize" aria-label="Згорнути тренування">${ic('down')}<span>Згорнути</span></button><button class="iconbtn" data-act="queue" aria-label="Усі вправи">${ic('list')}</button>
-      <span class="muted">${A.idx + 1}/${A.queue.length}</span>
+      <span class="muted">${posLbl}</span>
       <div class="clock" id="clock"></div>${gear()}</div>
     <div class="progress"><i style="width:${pct}%"></i></div>
     <div class="card">
