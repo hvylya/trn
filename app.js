@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.15.2';
+const APP_VERSION = '1.16.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -107,7 +107,8 @@ const LS = {
 let person = (() => { try { const u = new URLSearchParams(location.search).get('u'); if (u && P.people[u]){ LS.set('trn:person', u); return u; } } catch(e){} return LS.get('trn:person', null); })();
 let S = null;
 const blank = () => ({ v:1, settings:{duration:90, restHeavy:150, restMain:120, restIso:90, restCore:45, fun:"normal"}, blockStart:null, blockLen:8, mnotes:{}, home:{}, deloadUntil:null, deloadSnooze:null, cpSeen:{}, workouts:[], active:null, measurements:[], ach:{}, lastBackup:null });
-function load(){ S = Object.assign(blank(), person ? LS.get('trn:data:' + person, {}) : {}); S.settings = Object.assign(blank().settings, S.settings); if (!S.settings.durTouched) S.settings.duration = 90; try { migrateAch(); } catch(e){} }
+function load(){ S = Object.assign(blank(), person ? LS.get('trn:data:' + person, {}) : {}); S.settings = Object.assign(blank().settings, S.settings); if (!S.settings.durTouched) S.settings.duration = 90; try { migrateAch(); } catch(e){}
+  if (S.active){ try { const ok = id => !!stepById(S.active.day, id); S.active.queue = S.active.queue.filter(ok); if (!S.active.queue.length) S.active = null; else if (S.active.idx >= S.active.queue.length) S.active.idx = S.active.queue.length - 1; } catch(e){ S.active = null; } } }
 function migrateAch(){
   if (!person || S.achV === 2) return;
   Object.keys(S.ach || {}).forEach(id => { if (!ACH.some(a => a[0] === id)) delete S.ach[id]; });
@@ -257,14 +258,18 @@ function deloadSignal(){
   return null;
 }
 function entriesFor(en){ const out = []; S.workouts.forEach(w => w.items.forEach(it => { if (it.en === en && it.sets.some(s => s.done)) out.push({w, it}); })); return out; }
-function lastFor(en){ const e = entriesFor(en); return e.length ? e[e.length - 1] : null; }
+function rangeOf(day, en){ const d = P.days.find(x => x.key === day); for (const s of (d && d[person]) || []){ if (s.en === en) return s; if (s.alt && s.alt.en === en) return s.alt; } return null; }
+/* якщо та сама вправа в різні дні має різний діапазон (важко 5–8 / помірно 8–10) — минулий раз беремо з дня з тим самим діапазоном */
+function lastFor(en, st){ const e = entriesFor(en); if (!e.length) return null;
+  if (st && st.max){ const same = e.filter(x => { const r = rangeOf(x.w.day, en); return r && r.min === st.min && r.max === st.max; }); if (same.length) return same[same.length - 1]; }
+  return e[e.length - 1]; }
 function bestFor(en){
   let bw = -1, br = 0;
   entriesFor(en).forEach(({it}) => it.sets.forEach(s => { if (!s.done || s.w == null) return; if (s.w > bw){ bw = s.w; br = s.r || 0; } else if (s.w === bw && (s.r || 0) > br) br = s.r || 0; }));
   return bw < 0 ? null : {w: bw, r: br};
 }
 function suggestUp(step, en){
-  const l = lastFor(en); if (!l || step.type !== 'weight' || step.unit !== 'reps' || !step.max) return null;
+  const l = lastFor(en, step); if (!l || step.type !== 'weight' || step.unit !== 'reps' || !step.max) return null;
   const done = l.it.sets.filter(s => s.done);
   if (done.length < step.sets) return null;
   const w0 = done[0].w; if (w0 == null) return null;
@@ -440,7 +445,7 @@ function ensureItem(id){
 function fillSets(id){
   const A = S.active, it = A.items[id], st = effStep(A.day, id);
   it.en = st.en;
-  const last = lastFor(st.en);
+  const last = lastFor(st.en, st);
   const up = suggestUp(st, st.en);
   it.sets = Array.from({length: st.sets}, (_, i) => {
     const ls = last ? (last.it.sets[i] || last.it.sets[last.it.sets.length - 1]) : null;
@@ -457,7 +462,7 @@ function fillSets(id){
 /* фото тренажерів (офлайн, з кешу застосунку) */
 const PHOTO = {'V-squat':'vsquat-drax','Leg press 45°':'legpress-hack','Calf press 45°':'legpress-hack','Hip thrust':'hipthrust-drax','Romanian deadlift':'rack-platform',
   'Seated leg curl':'legcurl-s72','Hip adduction':'adductor','Hip abduction':'adductor','Leg extension':'legext-s71','Calf press':'legpress-s70',
-  'Smith squat':'smith-fw161','Back extension Y':'backext-45','Cable kickback':'ms50',
+  'Smith squat':'smith-fw161','Back extension Y':'backext-45','Back extension 45°':'backext-45','Cable kickback':'ms50',
   'T-bar row':'tbar-drax','Face pull':'ms50','Cable lateral raise':'ms50','Pallof press':'ms50','Cable pulldown':'ms50','Seated cable row':'ms50','Cable fly':'ms50','Cable pushdown':'ms50',
   'Multi Fly lateral raise':'multifly','Multi Fly rear raise':'multifly','Reverse pec deck':'pecfly','Pec deck fly':'pecfly','Lat pulldown':'lat-s33',
   'Chest-supported row':'row-s34','Chest press':'chest-s13','Triceps extension':'triceps-s42','Biceps curl machine':'biceps-s40',};
@@ -491,7 +496,7 @@ function workoutScreen(){
   const mainIds = A.queue.filter(q => effStep(A.day, q).kind !== 'extra');
   const doneCount = A.queue.filter(q => { const x = A.items[q]; return x && x.sets.length && x.sets.every(s => s.done); }).length;
   const pct = Math.round(doneCount / Math.max(1, mainIds.length) * 100);
-  const last = lastFor(st.en);
+  const last = lastFor(st.en, st);
   const up = suggestUp(st, st.en);
   const unitR = st.unit === 'sec' ? 'с' : st.unit === 'm' ? 'м' : '';
   const kindLbl = {warm:'Розминка', main:'Силова', core:'Кор', extra:'Якщо є час'}[st.kind];
@@ -521,6 +526,7 @@ function workoutScreen(){
       ${S.mnotes[st.en] ? `<button class="mnote" data-act="mnote">${ic('tool')} ${esc(S.mnotes[st.en])}</button>` : ''}
       ${st.note ? `<p class="note">${esc(st.note)}</p>` : ''}
       <p class="dose">План: <b>${esc(st.dose)}</b></p>
+      ${st.heavy ? `<div class="heavy">${tom('proud','tomheavy')}<span><b>Для кісток.</b> Вага, з якою 8 — межа. Пішло легко — роби до 12.</span></div>` : ''}
       ${st.type === 'weight' || last ? `<div class="last">${lastTxt}</div>` : ''}
       ${up != null ? `<div class="up">⬆ Час додати вагу: спробуй ${fmt(up)} кг</div>` : ''}
       ${rows}
@@ -543,7 +549,7 @@ function workoutScreen(){
 function warmHint(){
   const A = S.active; const fid = A.queue.find(q => { const x = effStep(A.day, q); return x.kind === 'main' && x.type === 'weight'; });
   if (!fid) return '';
-  const f = effStep(A.day, fid); const l = lastFor(f.en); const up = suggestUp(f, f.en);
+  const f = effStep(A.day, fid); const l = lastFor(f.en, f); const up = suggestUp(f, f.en);
   let w = up != null ? up : l && l.it.sets[0] ? l.it.sets[0].w : null;
   if (w != null && inDeload()) w = w * 0.75;
   const half = w ? Math.max(f.step, Math.round(w * 0.5 / f.step) * f.step) : null;
@@ -727,6 +733,10 @@ function markDone(i){
   if (person === 'p3' && st.type === 'weight' && st.max && s.r >= st.max && !A.prs.some(p => p.en === st.en)){
     A.qk = A.qk || {}; if (!A.qk[st.en]){ A.qk[st.en] = 1; quick = true; say(`${fmt(s.r)} — і легко? Перевір: униз було 2 с?`, 'fun', 'Якщо так — наступного разу додавай вагу. Якщо ні — спершу повільніше.', 'inspector'); }
   }
+  /* важка вправа: 12+ повторів — вага вже не важка */
+  if (st.heavy && st.type === 'weight' && s.r >= 12 && !quick){
+    A.hv = A.hv || {}; if (!A.hv[st.en]){ A.hv[st.en] = 1; quick = true; say(`${fmt(s.r)} повторів — це вже не важко`, 'fun', 'Наступного разу додай вагу, щоб знову було 5–8. Кістки скажуть дякую.', 'proud'); }
+  }
   const restOn = S.settings.restOn !== false;
   if (!allDone){ A.restEnd = restOn ? Date.now() + restFor(st) * 1000 : null; A.restBeeped = false; }
   else if (st.kind === 'warm'){ A.restEnd = null; }
@@ -754,7 +764,7 @@ function busySheet(){
   if (base.alt && !it.useAlt) opts.push(`<button data-act="usealt">${ic('swap')} Замінити: ${esc(nm(base.alt.en))}<small>${esc(base.alt.ua)} · ${esc(base.alt.dose)}</small></button>`);
   if (it.useAlt) opts.push(`<button data-act="usebase">${ic('left')} Повернути: ${esc(nm(base.en))}<small>${esc(base.ua)}</small></button>`);
   const lastMain = A.queue.map((q, i) => [q, i]).filter(([q]) => effStep(A.day, q).kind !== 'extra').pop();
-  if (lastMain && lastMain[1] > A.idx) opts.push(`<button data-act="toend">${ic('right')} Зробити наступну, а цю — в кінець черги<small>Повернешся до неї пізніше</small></button>`);
+  if (lastMain && lastMain[1] > A.idx) opts.push(`<button data-act="toend">${ic('right')} Зробити наступну, а цю — одразу після неї<small>Ще зайнято — натисни знову, посунеться ще на одну</small></button>`);
   if (!opts.length) opts.push(`<button data-act="closesheet">Зачекати<small>Інших варіантів для цієї вправи немає</small></button>`);
   openSheet(`${tom('box','tomsheet')}<h2>Тренажер зайнятий</h2><p>${esc(nm(base.en))}. Томек теж займає коробки — тож ось варіанти.</p><div class="opts">${opts.join('')}</div>`);
 }
@@ -1233,7 +1243,7 @@ document.addEventListener('click', e => {
     case 'restx': if (A){ A.restEnd = null; save(); const r = document.getElementById('rest'); if (r){ r.hidden = true; r.innerHTML = ''; } } break;
     case 'usealt': { const id = A.queue[A.idx]; A.items[id].useAlt = true; fillSets(id); save(); closeSheet(); render(); break; }
     case 'usebase': { const id = A.queue[A.idx]; A.items[id].useAlt = false; fillSets(id); save(); closeSheet(); render(); break; }
-    case 'toend': { const id = A.queue.splice(A.idx, 1)[0]; const firstExtra = A.queue.findIndex(q => effStep(A.day, q).kind === 'extra'); A.queue.splice(firstExtra < 0 ? A.queue.length : firstExtra, 0, id); techOpen = false; save(); closeSheet(); render(); toast('Перенесено в кінець черги'); break; }
+    case 'toend': { const id = A.queue.splice(A.idx, 1)[0]; const firstExtra = A.queue.findIndex(q => effStep(A.day, q).kind === 'extra'); const lim = firstExtra < 0 ? A.queue.length : firstExtra; A.queue.splice(Math.min(A.idx + 1, lim), 0, id); techOpen = false; save(); closeSheet(); render(); toast(`${esc(nm(effStep(A.day, id).en))} — після цієї вправи`); break; }
     case 'finish': {
       const left = mainLeft();
       if (left.length && !t.dataset.confirmed && !t.closest('.sh')){
