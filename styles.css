@@ -430,3 +430,5 @@ html[data-theme="paper"] .rest.over div, html[data-theme="paper"] .rest.hold div
 html[data-theme="paper"] .cal span.h{background:var(--accent-soft); color:var(--accent-dk)}
 html[data-theme="paper"] .banner{background:var(--surface); border:1px solid var(--line); box-shadow:inset 3px 0 0 var(--ochre)}
 html[data-theme="paper"] .banner.ok{box-shadow:inset 3px 0 0 var(--ok)}
+.banner.f13{background:color-mix(in srgb,#7c5cff 14%, transparent); border-color:color-mix(in srgb,#7c5cff 40%, transparent)}
+html.f13 img.tom{filter:drop-shadow(0 0 1px #f4f1ea) drop-shadow(0 0 1px #f4f1ea)}

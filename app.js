@@ -1,7 +1,7 @@
 'use strict';
 /* Зал на двох — офлайн-трекер тренувань. Дані зберігаються лише на цьому телефоні. */
 const P = window.PROGRAM;
-const APP_VERSION = '1.17.0';
+const APP_VERSION = '1.18.0';
 const app = document.getElementById('app');
 const sheetEl = document.getElementById('sheet');
 const toastEl = document.getElementById('toast');
@@ -24,6 +24,7 @@ const DAY_TAB = {mon:'Пн', wed:'Ср', fri:'Пт'};
 
 /* ---------- іконки (власні, лінійні) ---------- */
 const IP = {
+  cat13:'<path d="M5 11V4.5l4 3h6l4-3V11a7 6.5 0 0 1-14 0z"/><path d="M9.5 11.2h.01M14.5 11.2h.01" stroke-width="2.6"/><path d="M10 15.5h4"/>',
   gym:'<path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/>',
   home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11h13V9"/><path d="M10 20v-5h4v5"/>',
   cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -119,15 +120,25 @@ function save(){ if (person) LS.set('trn:data:' + person, S); }
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
 const THEMES = [['nord','Nord','#2e3440','#88c0d0'],['kanagawa','Kanagawa','#1f1f28','#d27e99'],['gruvbox','Gruvbox','#282828','#fe8019'],['dawn','Rosé Pine Dawn','#faf4ed','#d7827e'],['mint','Мʼята','#f8fcfa','#ef5f6a'],['paper','Папір','#fdfcf9','#3f6fc4']];
 const curTheme = () => { const t0 = LS.get('trn:theme', 'nord'), t = ({forest:'paper', tokyo:'nord'})[t0] || t0; return THEMES.some(x => x[0] === t) ? t : 'nord'; };
-function applyTheme(){ const t = curTheme(); document.documentElement.dataset.theme = t; const th = THEMES.find(x => x[0] === t) || THEMES[0]; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = th[2]; try { tintToms(); } catch(e){} }
+function applyTheme(){ const t = curTheme(); document.documentElement.dataset.theme = t; document.documentElement.classList.toggle('f13', isF13()); const th = THEMES.find(x => x[0] === t) || THEMES[0]; const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = th[2]; try { tintToms(); } catch(e){} }
 applyTheme();
 
 /* ---------- Томек: сірі наліпки, перефарбовані під кольори теми ---------- */
 const TOM = ['logo','ogo','smug','shake','inspector','proud','sleep','back','shy','loaf','first','yay','wig','trio','box','peek','sideeye'];
 const tomCache = {};
-const tomUrl = n => tomCache[curTheme() + ':' + n] || `img/tomek/${n}.png`;
+/* пʼятниця, 13-те: Томек — чорний кіт */
+function isF13(d = new Date()){ return d.getDay() === 5 && d.getDate() === 13; }
+const F13 = {
+  ban: ['Чорний кіт у залі — не прикмета. Це тренер у темному режимі.', 'Плюнь тричі через ліве плече. І ще три підходи, канєшно.', 'Під драбиною не ходимо, повз тренування — тим паче. Ну ти поняла.'],
+  r13: ['Чортова дюжина повторів. Чорт, ти сильна.', '13 повторів. Я б перехрестився, але в мене лапки.', 'Чортова дюжина? Ти шо, з чортом домовилась?'],
+  r13p3: ['13 повторів. Сьогодні це щасливе число — я перевірив.'],
+  fin: {p1: 'Невдача сьогодні теж записалась у зал. Злилась на розминці.', p2: 'Невдачі дивились, як ти тренуєшся, і пішли додому. Нервові.', p3: 'Чорний кіт сьогодні грав за твою команду. Рахується як оберіг.'}
+};
+function tomKey(){ return curTheme() + (isF13() ? ':f13' : ''); }
+const tomUrl = n => tomCache[tomKey() + ':' + n] || `img/tomek/${n}.png`;
 const tom = (n, cls) => `<img class="tom ${cls || ''}" data-t="${n}" src="${tomUrl(n)}" alt="" aria-hidden="true">`;
 function tomStops(){
+  if (isF13()) return [[.02, .02, .03], [.09, .085, .11], [.2, .19, .23], [.93, .9, .86]];
   const cs = getComputedStyle(document.documentElement), hx = v => { v = v.trim(); return [1, 3, 5].map(i => parseInt(v.slice(i, i + 2), 16) / 255); };
   const lum = c => .2126 * c[0] + .7152 * c[1] + .0722 * c[2], mix = (a, b, t) => a.map((x, i) => x * (1 - t) + b[i] * t);
   const a = hx(cs.getPropertyValue('--bg') || '#2e3440'), b = hx(cs.getPropertyValue('--ink') || '#eceff4'), acc = hx(cs.getPropertyValue('--tom-acc') || cs.getPropertyValue('--accent') || '#88c0d0');
@@ -136,8 +147,10 @@ function tomStops(){
   return [ink, mix(mix(ink, paper, .5), acc, .22), mix(mix(ink, paper, .78), acc, .12), paper];
 }
 function tintToms(){
-  const t = curTheme(), st = tomStops(), lut = new Uint8ClampedArray(256 * 3);
+  const t = tomKey(), st = tomStops(), lut = new Uint8ClampedArray(256 * 3);
   for (let v = 0; v < 256; v++){ const x = v / 255 * 3, i = Math.min(2, Math.floor(x)), f = x - i; for (let k = 0; k < 3; k++) lut[v * 3 + k] = 255 * (st[i][k] * (1 - f) + st[i + 1][k] * f); }
+  /* чорний кіт: негатив — біле хутро стає чорним; обвідку малює CSS */
+  if (isF13()) for (let v = 0; v < 256; v++){ const g = .05 + Math.pow(1 - v / 255, 1.3) * .5; lut[v * 3] = lut[v * 3 + 1] = 255 * g; lut[v * 3 + 2] = 255 * g * 1.12; }
   TOM.forEach(n => {
     if (tomCache[t + ':' + n]) return;
     const im = new Image();
@@ -146,7 +159,7 @@ function tintToms(){
       x.drawImage(im, 0, 0); const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
       for (let j = 0; j < p.length; j += 4){ const v = p[j]; p[j] = lut[v * 3]; p[j + 1] = lut[v * 3 + 1]; p[j + 2] = lut[v * 3 + 2]; }
       x.putImageData(d, 0, 0); tomCache[t + ':' + n] = c.toDataURL('image/png');
-      if (curTheme() === t) document.querySelectorAll(`img.tom[data-t="${n}"]`).forEach(i => { i.src = tomCache[t + ':' + n]; });
+      if (tomKey() === t) document.querySelectorAll(`img.tom[data-t="${n}"]`).forEach(i => { i.src = tomCache[t + ':' + n]; });
     } catch(e){} };
     im.src = `img/tomek/${n}.png`;
   });
@@ -317,7 +330,8 @@ const ACH = [
   ['owl','owl','Нічна сова · тренування після 20:00', s => s.workouts.some(w => new Date(w.start).getHours() >= 20), null, true],
   ['shake','shake10','Шейк №10 · 10 вечірніх тренувань', s => s.workouts.filter(w => new Date(w.end).getHours() >= 16).length >= 10, null, true],
   ['wow','shock','Томек у шоці · вага одразу +10%', s => s.workouts.some(w => w.wow), null, true],
-  ['comeback','peek','Повернення · після перерви 10+ днів', s => s.workouts.some((w, i) => i && w.start - s.workouts[i - 1].end > 10 * 864e5), null, true]
+  ['comeback','peek','Повернення · після перерви 10+ днів', s => s.workouts.some((w, i) => i && w.start - s.workouts[i - 1].end > 10 * 864e5), null, true],
+  ['fri13','cat13','Чорний кіт · тренування в пʼятницю, 13-го', s => s.workouts.some(w => isF13(new Date(w.start))), null, true]
 ];
 const achList = () => ACH.filter(a => !a[4] || a[4] === person);
 /* після видалення: прибрати ачівки, умова яких більше не виконується */
@@ -414,6 +428,7 @@ function todayScreen(){
 
 function bannersHtml(bw){
   let h = '';
+  if (isF13()) h += `<div class="banner f13">${tom('smug','tomban')}<span class="grow"><b>Пʼятниця, 13-те.</b> ${F13.ban[((person || 'p1').charCodeAt(1) + new Date().getMonth()) % F13.ban.length]}</span></div>`;
   const key = String(S.blockStart);
   if (S.blockStart && bw > blockLen()) h += `<div class="banner ok">${tom('proud','tomban')}<span class="grow"><b>${person === 'p3' ? 'Комплекс завершено!' : 'Блок завершено!'}</b> ${person === 'p3' ? 'Нова програма вже на підході. А поки — підсумок і сертифікат.' : 'Подивись підсумок і отримай сертифікат.'}</span><button class="btn" data-act="blockend">Підсумок</button></div>`;
   else if (S.blockStart && bw === 3 && !S.cpSeen[key + ':3']) h += `<div class="banner">${tom('inspector','tomban')}<span class="grow"><b>Контрольна точка, 3-й тиждень.</b> Якщо якась вправа не заходить — болить, незручно або тренажер вічно зайнятий — запиши в нотатку після тренування, замінимо.</span><button class="btn" data-act="cpok" data-k="${key}:3">Ок</button></div>`;
@@ -735,6 +750,8 @@ function markDone(i){
   if (person === 'p3' && st.type === 'weight' && st.max && s.r >= st.max && !A.prs.some(p => p.en === st.en)){
     A.qk = A.qk || {}; if (!A.qk[st.en]){ A.qk[st.en] = 1; quick = true; say(`${fmt(s.r)} — і легко? Перевір: униз було 2 с?`, 'fun', 'Якщо так — наступного разу додавай вагу. Якщо ні — спершу повільніше.', 'inspector'); }
   }
+  /* пʼятниця, 13-те: 13 повторів */
+  if (isF13() && s.r === 13 && st.unit === 'reps' && !quick && !A.f13){ A.f13 = 1; quick = true; say(pick(person === 'p3' ? F13.r13p3 : F13.r13), 'fun', '', 'smug'); }
   /* важка вправа: 12+ повторів — вага вже не важка */
   if (st.heavy && st.type === 'weight' && s.r >= 12 && !quick){
     A.hv = A.hv || {}; if (!A.hv[st.en]){ A.hv[st.en] = 1; quick = true; say(`${fmt(s.r)} повторів — це вже не важко`, 'fun', 'Наступного разу додай вагу, щоб знову було 5–8. Кістки скажуть дякую.', 'proud'); }
@@ -786,7 +803,7 @@ function finishWorkout(){
   const fresh = checkAch();
   save(); closeSheet(); releaseWake();
   const h = new Date().getHours();
-  lastFinished = { id: rec.id, fresh, ups, firsts, phrase: (h >= 16 ? PHRASES_EVENING : PHRASES_DAY)[Math.floor(Math.random() * (h >= 16 ? PHRASES_EVENING : PHRASES_DAY).length)], evening: h >= 16 };
+  lastFinished = { id: rec.id, fresh, ups, firsts, phrase: isF13() ? (F13.fin[person] || F13.fin.p1) : (h >= 16 ? PHRASES_EVENING : PHRASES_DAY)[Math.floor(Math.random() * (h >= 16 ? PHRASES_EVENING : PHRASES_DAY).length)], evening: h >= 16 };
   go('finish'); confetti();
 }
 const SHAKE_SVG = `<svg class="shake" viewBox="0 0 120 120" aria-hidden="true"><path d="M70 6 L62 34" stroke="#ff7a59" stroke-width="5" stroke-linecap="round"/><path d="M30 34 H90 L82 108 Q81 114 75 114 H45 Q39 114 38 108 Z" fill="#f2f4f7"/><path d="M33 56 H87 L84 84 H36 Z" fill="#ffb59f"/><rect x="26" y="28" width="68" height="10" rx="5" fill="#ff7a59"/><circle cx="50" cy="70" r="3" fill="#fff"/><circle cx="66" cy="76" r="2" fill="#fff"/><path d="M48 96 q12 8 24 0" stroke="#2a2f38" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="50" cy="88" r="2.5" fill="#2a2f38"/><circle cx="70" cy="88" r="2.5" fill="#2a2f38"/></svg>`;
